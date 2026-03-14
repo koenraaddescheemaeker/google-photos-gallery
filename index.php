@@ -1,16 +1,21 @@
 <?php
 // De link naar jouw gedeelde album
-$albumUrl = "https://photos.app.goo.gl/iZnBAYe88LB4r5Z89";<?php
-/**
- * Premium Google Photos Gallery
- * Gecorrigeerde versie: Geen vervorming & Centrale focus
- */
-// 2. Haal de foto's op
+$albumUrl = "https://photos.app.goo.gl/iZnBAYe88LB4r5Z89";
+// 2. Haal de inhoud op
 $content = @file_get_contents($albumUrl);
 if (!$content) {
     die("Kon het album niet laden. Controleer de link.");
 }
 
+// 3. Haal de albumtitel op uit de meta-tags
+preg_match('/<meta property="og:title" content="([^"]+)">/', $content, $titleMatches);
+$albumTitle = isset($titleMatches[1]) ? $titleMatches[1] : "Mijn Fotoalbum";
+
+// Opschonen: Google Photos zet vaak zijn eigen naam in de titel
+$albumTitle = str_replace(" - Google Photos", "", $albumTitle);
+if ($albumTitle == "Google Photos") { $albumTitle = "Gedeelde Herinneringen"; }
+
+// 4. Haal de foto-URL's op
 preg_match_all('/https:\/\/lh3\.googleusercontent\.com\/pw\/[a-zA-Z0-9\-_]+/', $content, $matches);
 $photos = array_unique($matches[0]);
 ?>
@@ -19,7 +24,7 @@ $photos = array_unique($matches[0]);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mijn Fotoalbum</title>
+    <title><?= htmlspecialchars($albumTitle) ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/photoswipe/dist/photoswipe.css">
     <style>
@@ -28,13 +33,9 @@ $photos = array_unique($matches[0]);
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 1.5rem;
         }
-
-        /* FIX: Voorkom vervorming in de lightbox */
         .pswp__img {
             object-fit: contain !important;
         }
-
-        /* Optioneel: subtiele animatie voor laden */
         .fade-in {
             animation: fadeIn 0.8s ease-in;
         }
@@ -49,7 +50,7 @@ $photos = array_unique($matches[0]);
     <div class="max-w-7xl mx-auto px-4 py-12">
         <header class="mb-16 text-center">
             <h1 class="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">
-                Mijn Gedeelde Foto's
+                <?= htmlspecialchars($albumTitle) ?>
             </h1>
             <p class="mt-4 text-lg text-gray-500 italic">Een premium overzicht van onze mooiste herinneringen.</p>
             <div class="mt-6 h-1 w-24 bg-indigo-600 mx-auto rounded-full"></div>
@@ -64,7 +65,7 @@ $photos = array_unique($matches[0]);
                    class="fade-in group relative block overflow-hidden rounded-2xl bg-gray-200 shadow-md transition-all hover:shadow-2xl">
                     
                     <img src="<?= $url ?>=w800" 
-                         alt="Foto" 
+                         alt="Foto uit <?= htmlspecialchars($albumTitle) ?>" 
                          loading="lazy"
                          class="h-72 w-full object-cover object-center transition-transform duration-700 group-hover:scale-110">
                     
@@ -81,12 +82,6 @@ $photos = array_unique($matches[0]);
             children: 'a',
             pswpModule: () => import('https://unpkg.com/photoswipe/dist/photoswipe.esm.js')
         });
-        
-        // Zorg dat PhotoSwipe de juiste schaling gebruikt
-        lightbox.on('afterInit', () => {
-            const pswp = lightbox.pswp;
-        });
-
         lightbox.init();
     </script>
 </body>
