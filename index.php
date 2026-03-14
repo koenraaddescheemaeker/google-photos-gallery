@@ -1,21 +1,15 @@
 <?php
 // De link naar jouw gedeelde album
 $albumUrl = "https://photos.app.goo.gl/iZnBAYe88LB4r5Z89";
-// 2. Haal de inhoud op
 $content = @file_get_contents($albumUrl);
-if (!$content) {
-    die("Kon het album niet laden. Controleer de link.");
-}
+if (!$content) { die("Kon het album niet laden."); }
 
-// 3. Haal de albumtitel op uit de meta-tags
+// Albumtitel ophalen
 preg_match('/<meta property="og:title" content="([^"]+)">/', $content, $titleMatches);
-$albumTitle = isset($titleMatches[1]) ? $titleMatches[1] : "Mijn Fotoalbum";
+$albumTitle = isset($titleMatches[1]) ? str_replace(" - Google Photos", "", $titleMatches[1]) : "Mijn Foto's";
+if ($albumTitle == "Google Photos") $albumTitle = "Gedeelde Herinneringen";
 
-// Opschonen: Google Photos zet vaak zijn eigen naam in de titel
-$albumTitle = str_replace(" - Google Photos", "", $albumTitle);
-if ($albumTitle == "Google Photos") { $albumTitle = "Gedeelde Herinneringen"; }
-
-// 4. Haal de foto-URL's op
+// Foto's ophalen
 preg_match_all('/https:\/\/lh3\.googleusercontent\.com\/pw\/[a-zA-Z0-9\-_]+/', $content, $matches);
 $photos = array_unique($matches[0]);
 ?>
@@ -27,33 +21,36 @@ $photos = array_unique($matches[0]);
     <title><?= htmlspecialchars($albumTitle) ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/photoswipe/dist/photoswipe.css">
+    <script src="https://unpkg.com/smartcrop@2.0.5/smartcrop.js"></script>
     <style>
         .gallery-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 1.5rem;
         }
-        .pswp__img {
-            object-fit: contain !important;
+        /* Container voor de intelligente crop */
+        .photo-wrapper {
+            position: relative;
+            height: 300px; 
+            width: 100%;
+            overflow: hidden;
+            border-radius: 1rem;
         }
-        .fade-in {
-            animation: fadeIn 0.8s ease-in;
+        .smart-img {
+            position: absolute;
+            max-width: none;
+            opacity: 0;
+            transition: opacity 0.5s ease-in;
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        .pswp__img { object-fit: contain !important; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-900 font-sans antialiased">
+<body class="bg-gray-50 text-gray-900">
 
     <div class="max-w-7xl mx-auto px-4 py-12">
-        <header class="mb-16 text-center">
-            <h1 class="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl">
-                <?= htmlspecialchars($albumTitle) ?>
-            </h1>
-            <p class="mt-4 text-lg text-gray-500 italic">Een premium overzicht van onze mooiste herinneringen.</p>
-            <div class="mt-6 h-1 w-24 bg-indigo-600 mx-auto rounded-full"></div>
+        <header class="mb-12 text-center">
+            <h1 class="text-5xl font-black tracking-tight text-gray-900"><?= htmlspecialchars($albumTitle) ?></h1>
+            <div class="mt-4 h-1 w-20 bg-indigo-600 mx-auto rounded-full"></div>
         </header>
 
         <div class="gallery-grid" id="my-gallery">
@@ -61,15 +58,14 @@ $photos = array_unique($matches[0]);
                 <a href="<?= $url ?>=w2048" 
                    data-pswp-width="2048" 
                    data-pswp-height="1536" 
-                   target="_blank"
-                   class="fade-in group relative block overflow-hidden rounded-2xl bg-gray-200 shadow-md transition-all hover:shadow-2xl">
+                   class="group block bg-gray-200 shadow-lg hover:shadow-2xl transition-all duration-300 rounded-2xl">
                     
-                    <img src="<?= $url ?>=w800" 
-                         alt="Foto uit <?= htmlspecialchars($albumTitle) ?>" 
-                         loading="lazy"
-                         class="h-72 w-full object-cover object-center transition-transform duration-700 group-hover:scale-110">
-                    
-                    <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                    <div class="photo-wrapper">
+                        <img src="<?= $url ?>=w800" 
+                             alt="Foto" 
+                             class="smart-img"
+                             onload="doSmartCrop(this)">
+                    </div>
                 </a>
             <?php endforeach; ?>
         </div>
@@ -83,6 +79,20 @@ $photos = array_unique($matches[0]);
             pswpModule: () => import('https://unpkg.com/photoswipe/dist/photoswipe.esm.js')
         });
         lightbox.init();
+
+        // Intelligente centrering functie
+        window.doSmartCrop = function(img) {
+            const container = img.parentElement;
+            smartcrop.crop(img, { width: container.offsetWidth, height: container.offsetHeight }).then(function(result) {
+                const crop = result.topCrop;
+                const scale = container.offsetWidth / crop.width;
+                img.style.width = (img.naturalWidth * scale) + 'px';
+                img.style.height = (img.naturalHeight * scale) + 'px';
+                img.style.left = (-crop.x * scale) + 'px';
+                img.style.top = (-crop.y * scale) + 'px';
+                img.style.opacity = "1";
+            });
+        };
     </script>
 </body>
 </html>
