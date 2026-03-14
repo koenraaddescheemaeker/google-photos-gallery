@@ -16,6 +16,7 @@
         }
     </style>
 </head>
+<?php include 'menu.php'; ?>
 <body class="bg-gray-950 text-white font-sans antialiased">
 
     <nav class="p-6">

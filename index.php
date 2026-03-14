@@ -1,6 +1,6 @@
 <?php
 // De link naar jouw gedeelde album
-$albumUrl = "https://photos.app.goo.gl/iZnBAYe88LB4r5Z89";
+$albumUrl = "https://photos.app.goo.gl/vVky35x2foq6Lpv26";
 $content = @file_get_contents($albumUrl);
 if (!$content) { die("Kon het album niet laden."); }
 
@@ -45,6 +45,7 @@ $photos = array_unique($matches[0]);
         .pswp__img { object-fit: contain !important; }
     </style>
 </head>
+<?php include 'menu.php'; ?>
 <body class="bg-gray-50 text-gray-900">
 
     <div class="max-w-7xl mx-auto px-4 py-12">
