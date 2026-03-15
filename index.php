@@ -2,7 +2,7 @@
 require_once 'config.php';
 
 // 1. Welk album laden we?
-$albumUrl = isset($_GET['album']) ? $_GET['album'] : "JOUW_STANDAARD_ALBUM_LINK";
+$albumUrl = isset($_GET['album']) ? $_GET['album'] : "https://photos.app.goo.gl/65ki5UuTvLvdfZWZ6";
 $cacheFile = 'cache_' . md5($albumUrl) . '.json';
 $cacheTime = 600; // 10 minuten cache
 
