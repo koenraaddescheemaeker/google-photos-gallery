@@ -1,32 +1,43 @@
 <?php
 require_once 'config.php';
 
+// Verleng de tijd die PHP mag draaien
+ini_set('default_socket_timeout', 300);
+set_time_limit(300);
+
 // 1. Welk album laden we?
 $albumUrl = isset($_GET['album']) ? $_GET['album'] : "https://goo.gl/photos/H5nmVV473rJw1d6aA";
 // We gebruiken /tmp omdat Docker daar meestal schrijfrechten geeft
 $cacheFile = '/tmp/cache_' . md5($albumUrl) . '.json';
-$cacheTime = 600; 
+$cacheTime = 3600; // 1 uur cache voor extra snelheid
 
 if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < $cacheTime)) {
     $data = json_decode(file_get_contents($cacheFile), true);
     $photos = $data['photos'];
     $albumTitle = $data['title'];
 } else {
-    // Verhoog de tijd die PHP mag besteden aan dit script om 504 te voorkomen
-    set_time_limit(60); 
+    // Gebruik cURL voor betere timeout controle dan file_get_contents
+    $ch = curl_init($albumUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30); // Stop na 30 seconden
+    $content = curl_exec($ch);
+    curl_close($ch);
 
-    $content = @file_get_contents($albumUrl);
-    if (!$content) { die("Album niet bereikbaar. Controleer of de link openbaar is."); }
+    if (!$content) {
+        $albumTitle = "Laden mislukt...";
+        $photos = [];
+        $error = "Google reageert te traag. Ververs de pagina om het opnieuw te proberen.";
+    } else {
+        preg_match('/<meta property="og:title" content="([^"]+)">/', $content, $titleMatches);
+        $albumTitle = isset($titleMatches[1]) ? str_replace(" - Google Photos", "", $titleMatches[1]) : "Album";
+        
+        preg_match_all('/https:\/\/lh3\.googleusercontent\.com\/pw\/[a-zA-Z0-9\-_]+/', $content, $matches);
+        $photos = array_unique($matches[0]);
 
-    preg_match('/<meta property="og:title" content="([^"]+)">/', $content, $titleMatches);
-    $albumTitle = isset($titleMatches[1]) ? str_replace(" - Google Photos", "", $titleMatches[1]) : "Album";
-    
-    preg_match_all('/https:\/\/lh3\.googleusercontent\.com\/pw\/[a-zA-Z0-9\-_]+/', $content, $matches);
-    $photos = array_unique($matches[0]);
-
-    // Opslaan in /tmp
-    if (!empty($photos)) {
-        file_put_contents($cacheFile, json_encode(['photos' => $photos, 'title' => $albumTitle]));
+        if (!empty($photos)) {
+            file_put_contents($cacheFile, json_encode(['photos' => $photos, 'title' => $albumTitle]));
+        }
     }
 }
 ?>
