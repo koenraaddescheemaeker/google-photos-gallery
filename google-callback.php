@@ -1,7 +1,13 @@
 <?php
 require_once 'config.php';
 
+// Zorg dat we fouten zien
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 if (isset($_GET['code'])) {
+    echo "Bezig met inwisselen van code voor tokens...<br>";
+
     $ch = curl_init("https://oauth2.googleapis.com/token");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
@@ -13,38 +19,54 @@ if (isset($_GET['code'])) {
         'grant_type'    => 'authorization_code'
     ]));
     
-    $tokens = json_decode(curl_exec($ch), true);
+    $token_res = curl_exec($ch);
+    $tokens = json_decode($token_res, true);
     curl_close($ch);
 
-    if (isset($tokens['refresh_token']) || isset($tokens['access_token'])) {
-        // We bereiden de data voor
+    if (isset($tokens['access_token'])) {
+        echo "✅ Tokens ontvangen van Google.<br>";
+        
         $payload = [
             'id'            => 1,
             'access_token'  => $tokens['access_token'],
             'expires_at'    => date('Y-m-d H:i:s', time() + ($tokens['expires_in'] ?? 3600))
         ];
 
-        // Alleen overschrijven als we een NIEUWE refresh token krijgen
-        // (Google geeft deze soms alleen de allereerste keer)
         if (isset($tokens['refresh_token'])) {
             $payload['refresh_token'] = $tokens['refresh_token'];
         }
 
-        // Gebruik PATCH om de bestaande rij (id=1) bij te werken
-        // Als dit faalt (omdat rij 1 nog niet bestaat), doen we een POST
-        $res = supabaseRequest('google_tokens?id=eq.1', 'PATCH', $payload);
-        
-        // Als PATCH niets heeft aangepast (lege array), probeer dan POST
-        if (empty($res)) {
-            supabaseRequest('google_tokens', 'POST', $payload);
-        }
+        echo "Bezig met opslaan in Supabase...<br>";
 
-        echo "<h1>Succes!</h1><p>De Google-verbinding is gemaakt en opgeslagen. <a href='index.php'>Klik hier om naar het album te gaan.</a></p>";
+        // We proberen een 'Upsert' (Update of Insert)
+        // We sturen een extra header mee om Supabase te dwingen de rij te overschrijven als id=1 al bestaat
+        $url = $supabaseUrl . "/rest/v1/google_tokens";
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "apikey: $supabaseKey",
+            "Authorization: Bearer $supabaseKey",
+            "Content-Type: application/json",
+            "Prefer: resolution=merge-duplicates" // Dit is de 'Upsert' magie
+        ]);
+        
+        $db_res = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($http_code >= 200 && $http_code < 300) {
+            echo "<h1 style='color:green'>🔥 Dubbel Succes!</h1>";
+            echo "<p>De tokens staan nu veilig in de database. Je kunt nu naar <a href='index.php'>het album</a>.</p>";
+        } else {
+            echo "<h1 style='color:red'>❌ Database Fout!</h1>";
+            echo "Status code: " . $http_code . "<br>";
+            echo "Antwoord van Supabase: <pre>" . htmlspecialchars($db_res) . "</pre>";
+        }
     } else {
-        echo "<h1>Fout!</h1><p>Geen tokens ontvangen van Google. Details:</p><pre>";
-        print_r($tokens);
-        echo "</pre>";
+        echo "<h1>❌ Google Fout!</h1><pre>" . print_r($tokens, true) . "</pre>";
     }
 } else {
-    echo "Geen autorisatiecode gevonden in de URL.";
+    echo "Geen code ontvangen.";
 }
