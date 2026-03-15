@@ -14,8 +14,8 @@ $supabaseKey = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsIml
 // Stel deze in Coolify in onder 'Environment Variables'
 $googleClientID     = $_ENV['GOOGLE_CLIENT_ID'] ?? ''; 
 $googleClientSecret = $_ENV['GOOGLE_CLIENT_SECRET'] ?? '';
-$googleRedirectUri  = 'https://' . $_SERVER['HTTP_HOST'] . '/google-callback.php';
-
+// $googleRedirectUri  = 'https://' . $_SERVER['HTTP_HOST'] . '/google-callback.php';
+$googleRedirectUri = 'https://aco8s8skwgog88wg40ckkws4.167.86.73.61.sslip.io/google-callback.php';
 /**
  * Supabase API Request Helper
  */
