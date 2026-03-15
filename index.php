@@ -2,7 +2,7 @@
 require_once 'config.php';
 
 // 1. Welk album laden we?
-$albumUrl = isset($_GET['album']) ? $_GET['album'] : "https://photos.app.goo.gl/65ki5UuTvLvdfZWZ6";
+$albumUrl = isset($_GET['album']) ? $_GET['album'] : "https://goo.gl/photos/H5nmVV473rJw1d6aA";
 // We gebruiken /tmp omdat Docker daar meestal schrijfrechten geeft
 $cacheFile = '/tmp/cache_' . md5($albumUrl) . '.json';
 $cacheTime = 600; 
