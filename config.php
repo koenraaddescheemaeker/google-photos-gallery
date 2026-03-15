@@ -40,7 +40,11 @@ function supabaseRequest($endpoint, $method = 'GET', $data = null) {
     } else {
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
     }
-    
+    ////
+    // In de supabaseRequest functie:
+curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3); // Max 3 sec om verbinding te maken
+curl_setopt($ch, CURLOPT_TIMEOUT, 5);        // Max 5 sec voor de hele data
+    ////
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
