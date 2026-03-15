@@ -7,7 +7,7 @@
 
 // --- 1. Supabase Instellingen ---
 // Je kunt deze hier hardcoderen of ook in Coolify zetten als SUPABASE_URL en SUPABASE_KEY
-$supabaseUrl = "http://supabasekong-cs8cwo8c48g4www4w4scss84.167.86.73.61.sslip.io";
+$supabaseUrl = "http://supabase-force:8000";
 $supabaseKey = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc3MzQ4MzM2MCwiZXhwIjo0OTI5MTU2OTYwLCJyb2xlIjoiYW5vbiJ9.LXIJo7fsXhJIQsSi2jIfoqrwV8axI57_6B733vKwCXs";
 
 // --- 2. Google OAuth Instellingen (Veilig via getenv) ---
