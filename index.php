@@ -3,18 +3,20 @@ require_once 'config.php';
 
 // 1. Welk album laden we?
 $albumUrl = isset($_GET['album']) ? $_GET['album'] : "https://photos.app.goo.gl/65ki5UuTvLvdfZWZ6";
-$cacheFile = 'cache_' . md5($albumUrl) . '.json';
-$cacheTime = 600; // 10 minuten cache
+// We gebruiken /tmp omdat Docker daar meestal schrijfrechten geeft
+$cacheFile = '/tmp/cache_' . md5($albumUrl) . '.json';
+$cacheTime = 600; 
 
-// 2. Check of we een verse cache hebben
-if (file_exists($cacheFile) && (time() - file_get_contents($cacheFile . '.time') < $cacheTime)) {
+if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < $cacheTime)) {
     $data = json_decode(file_get_contents($cacheFile), true);
     $photos = $data['photos'];
     $albumTitle = $data['title'];
 } else {
-    // Haal data op bij Google (alleen als cache verlopen is)
+    // Verhoog de tijd die PHP mag besteden aan dit script om 504 te voorkomen
+    set_time_limit(60); 
+
     $content = @file_get_contents($albumUrl);
-    if (!$content) { die("Album niet bereikbaar."); }
+    if (!$content) { die("Album niet bereikbaar. Controleer of de link openbaar is."); }
 
     preg_match('/<meta property="og:title" content="([^"]+)">/', $content, $titleMatches);
     $albumTitle = isset($titleMatches[1]) ? str_replace(" - Google Photos", "", $titleMatches[1]) : "Album";
@@ -22,9 +24,10 @@ if (file_exists($cacheFile) && (time() - file_get_contents($cacheFile . '.time')
     preg_match_all('/https:\/\/lh3\.googleusercontent\.com\/pw\/[a-zA-Z0-9\-_]+/', $content, $matches);
     $photos = array_unique($matches[0]);
 
-    // Sla op in cache
-    file_put_contents($cacheFile, json_encode(['photos' => $photos, 'title' => $albumTitle]));
-    file_put_contents($cacheFile . '.time', time());
+    // Opslaan in /tmp
+    if (!empty($photos)) {
+        file_put_contents($cacheFile, json_encode(['photos' => $photos, 'title' => $albumTitle]));
+    }
 }
 ?>
 <!DOCTYPE html>
