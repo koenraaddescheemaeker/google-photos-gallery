@@ -7,7 +7,21 @@
 
 // --- 1. Supabase Instellingen ---
 // Je kunt deze hier hardcoderen of ook in Coolify zetten als SUPABASE_URL en SUPABASE_KEY
-$supabaseUrl = "http://172.17.0.1:8000";
+// $supabaseUrl = "http://172.17.0.1:8000";
+// We testen de verschillende gateways die we in je 'hostname -I' zagen
+$possible_ips = ['10.0.3.1', '10.0.1.1', '10.0.5.1', '10.0.0.1', '10.0.2.1', '10.0.6.1', '10.0.4.1', '167.86.73.61'];
+$found_ip = 'supabase-kong'; // Default fallback
+
+foreach ($possible_ips as $ip) {
+    $fp = @fsockopen($ip, 8000, $errno, $errstr, 0.1); // Zeer snelle check (0.1 sec)
+    if ($fp) {
+        $found_ip = $ip;
+        fclose($fp);
+        break;
+    }
+}
+
+$supabaseUrl = "http://$found_ip:8000";
 $supabaseKey = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc3MzQ4MzM2MCwiZXhwIjo0OTI5MTU2OTYwLCJyb2xlIjoiYW5vbiJ9.LXIJo7fsXhJIQsSi2jIfoqrwV8axI57_6B733vKwCXs";
 
 // --- 2. Google OAuth Instellingen (Veilig via getenv) ---
