@@ -4,7 +4,6 @@
  * Centraal configuratiebestand voor het Familie Portaal.
  * Gebruikt getenv() voor maximale compatibiliteit met Coolify/Docker.
  */
-
 // --- 1. Supabase Instellingen ---
 // Je kunt deze hier hardcoderen of ook in Coolify zetten als SUPABASE_URL en SUPABASE_KEY
 // $supabaseUrl = "http://172.17.0.1:8000";
