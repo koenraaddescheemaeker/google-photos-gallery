@@ -1,11 +1,10 @@
 <?php
 /**
- * config.php
- * Geoptimaliseerd voor een gedeeld Coolify-project.
+ * config.php - Geoptimaliseerd voor een gedeeld Coolify Project
  */
 
 // --- 1. Supabase Instellingen ---
-// Omdat ze in hetzelfde project zitten, gebruiken we de interne servicenaam uit je compose file.
+// Omdat ze in hetzelfde project staan, 'ziet' Docker dit adres direct.
 $supabaseUrl = "http://supabase-kong:8000"; 
 $supabaseKey = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc3MzQ4MzM2MCwiZXhwIjo0OTI5MTU2OTYwLCJyb2xlIjoiYW5vbiJ9.LXIJo7fsXhJIQsSi2jIfoqrwV8axI57_6B733vKwCXs";
 
@@ -26,21 +25,19 @@ function supabaseRequest($endpoint, $method = 'GET', $data = null) {
     $headers = [
         "apikey: $supabaseKey",
         "Authorization: Bearer $supabaseKey",
-        "Content-Type: application/json"
+        "Content-Type: application/json",
+        "Prefer: return=representation"
     ];
     
-    // Specifieke afhandeling voor UPSERT (gebruikt in callback)
     if ($method === 'UPSERT') {
         $headers[] = "Prefer: resolution=merge-duplicates";
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
     } else {
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-        $headers[] = "Prefer: return=representation";
     }
     
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5); 
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     
     if ($data) {
