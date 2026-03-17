@@ -1,72 +1,63 @@
 <?php
 require_once 'config.php';
 
-// Zorg dat we fouten zien
+// Foutopsporing aan
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 if (isset($_GET['code'])) {
     echo "Bezig met inwisselen van code voor tokens...<br>";
 
+    // 1. Wissel code in voor tokens bij Google
     $ch = curl_init("https://oauth2.googleapis.com/token");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-        'code'          => $_GET['code'],
         'client_id'     => $googleClientID,
         'client_secret' => $googleClientSecret,
         'redirect_uri'  => $googleRedirectUri,
-        'grant_type'    => 'authorization_code'
+        'grant_type'    => 'authorization_code',
+        'code'          => $_GET['code']
     ]));
-    
-    $token_res = curl_exec($ch);
-    $tokens = json_decode($token_res, true);
+
+    $response = json_decode(curl_exec($ch), true);
     curl_close($ch);
 
-    if (isset($tokens['access_token'])) {
+    if (isset($response['access_token'])) {
         echo "✅ Tokens ontvangen van Google.<br>";
         
-        $payload = [
-            'id'            => 1,
-            'access_token'  => $tokens['access_token'],
-            'expires_at'    => date('Y-m-d H:i:s', time() + ($tokens['expires_in'] ?? 3600))
-        ];
+        $access_token  = $response['access_token'];
+        $refresh_token = $response['refresh_token'] ?? null; // Alleen bij eerste keer
+        $expires_in    = $response['expires_in'];
+        $expires_at    = date('Y-m-d H:i:s', time() + $expires_in);
 
-        if (isset($tokens['refresh_token'])) {
-            $payload['refresh_token'] = $tokens['refresh_token'];
+        // 2. Opslaan in Supabase via de werkende helper in config.php
+        echo "Bezig met opslaan in Supabase...<br>";
+        
+        $data = [
+            'id'            => 1, // We gebruiken ID 1 voor de hoofdgebruiker
+            'access_token'  => $access_token,
+            'expires_at'    => $expires_at
+        ];
+        
+        // Als we een refresh_token hebben, voegen we die toe
+        if ($refresh_token) {
+            $data['refresh_token'] = $refresh_token;
         }
 
-        echo "Bezig met opslaan in Supabase...<br>";
+        // Gebruik UPSERT (via onze helper) om de tokens op te slaan
+        $res = supabaseRequest('google_tokens', 'UPSERT', $data);
 
-        // We proberen een 'Upsert' (Update of Insert)
-        // We sturen een extra header mee om Supabase te dwingen de rij te overschrijven als id=1 al bestaat
-        $url = $supabaseUrl . "/rest/v1/google_tokens";
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "apikey: $supabaseKey",
-            "Authorization: Bearer $supabaseKey",
-            "Content-Type: application/json",
-            "Prefer: resolution=merge-duplicates" // Dit is de 'Upsert' magie
-        ]);
-        
-        $db_res = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($http_code >= 200 && $http_code < 300) {
-            echo "<h1 style='color:green'>🔥 Dubbel Succes!</h1>";
-            echo "<p>De tokens staan nu veilig in de database. Je kunt nu naar <a href='index.php'>het album</a>.</p>";
+        if ($res && !isset($res['error'])) {
+            echo "✅ Succesvol opgeslagen! Je wordt nu doorgestuurd...";
+            header("Refresh: 2; url=admin.php");
         } else {
-            echo "<h1 style='color:red'>❌ Database Fout!</h1>";
-            echo "Status code: " . $http_code . "<br>";
-            echo "Antwoord van Supabase: <pre>" . htmlspecialchars($db_res) . "</pre>";
+            echo "❌ Database Fout!<br>";
+            echo "Antwoord van Supabase: <pre>" . print_r($res, true) . "</pre>";
         }
     } else {
-        echo "<h1>❌ Google Fout!</h1><pre>" . print_r($tokens, true) . "</pre>";
+        echo "❌ Google OAuth Fout: " . ($response['error_description'] ?? 'Onbekende fout');
     }
 } else {
-    echo "Geen code ontvangen.";
+    echo "Geen autorisatiecode ontvangen.";
 }
