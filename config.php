@@ -1,32 +1,17 @@
 <?php
 /**
  * config.php
- * Centraal configuratiebestand voor het Familie Portaal.
- * Gebruikt getenv() voor maximale compatibiliteit met Coolify/Docker.
+ * Geoptimaliseerd voor een gedeeld Coolify-project.
  */
+
 // --- 1. Supabase Instellingen ---
-// Je kunt deze hier hardcoderen of ook in Coolify zetten als SUPABASE_URL en SUPABASE_KEY
-// $supabaseUrl = "http://172.17.0.1:8000";
-// We testen de verschillende gateways die we in je 'hostname -I' zagen
-$possible_ips = ['10.0.3.1', '10.0.1.1', '10.0.5.1', '10.0.0.1', '10.0.2.1', '10.0.6.1', '10.0.4.1', '167.86.73.61'];
-$found_ip = 'supabase-kong'; // Default fallback
-
-foreach ($possible_ips as $ip) {
-    $fp = @fsockopen($ip, 8000, $errno, $errstr, 0.1); // Zeer snelle check (0.1 sec)
-    if ($fp) {
-        $found_ip = $ip;
-        fclose($fp);
-        break;
-    }
-}
-
-$supabaseUrl = "http://$found_ip:8000";
+// Omdat ze in hetzelfde project zitten, gebruiken we de interne servicenaam uit je compose file.
+$supabaseUrl = "http://supabase-kong:8000"; 
 $supabaseKey = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc3MzQ4MzM2MCwiZXhwIjo0OTI5MTU2OTYwLCJyb2xlIjoiYW5vbiJ9.LXIJo7fsXhJIQsSi2jIfoqrwV8axI57_6B733vKwCXs";
 
-// --- 2. Google OAuth Instellingen (Veilig via getenv) ---
+// --- 2. Google OAuth Instellingen ---
 $googleClientID     = getenv('GOOGLE_CLIENT_ID') ?: ''; 
 $googleClientSecret = getenv('GOOGLE_CLIENT_SECRET') ?: '';
-// De Redirect URI moet EXACT overeenkomen met je Google Cloud Console instelling
 $googleRedirectUri  = 'https://aco8s8skwgog88wg40ckkws4.167.86.73.61.sslip.io/google-callback.php';
 
 /**
@@ -35,31 +20,27 @@ $googleRedirectUri  = 'https://aco8s8skwgog88wg40ckkws4.167.86.73.61.sslip.io/go
 function supabaseRequest($endpoint, $method = 'GET', $data = null) {
     global $supabaseUrl, $supabaseKey;
     
-    // Zorg dat we niet dubbel /rest/v1 toevoegen
     $baseUrl = rtrim($supabaseUrl, '/') . "/rest/v1/" . ltrim($endpoint, '/');
     
     $ch = curl_init($baseUrl);
     $headers = [
         "apikey: $supabaseKey",
         "Authorization: Bearer $supabaseKey",
-        "Content-Type: application/json",
-        "Prefer: return=representation"
+        "Content-Type: application/json"
     ];
     
-    // Voor Upsert (gebruikt in callback)
+    // Specifieke afhandeling voor UPSERT (gebruikt in callback)
     if ($method === 'UPSERT') {
         $headers[] = "Prefer: resolution=merge-duplicates";
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
     } else {
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+        $headers[] = "Prefer: return=representation";
     }
-    ////
-    // In de supabaseRequest functie:
-curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3); // Max 3 sec om verbinding te maken
-curl_setopt($ch, CURLOPT_TIMEOUT, 5);        // Max 5 sec voor de hele data
-    ////
+    
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5); 
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     
     if ($data) {
@@ -75,25 +56,19 @@ curl_setopt($ch, CURLOPT_TIMEOUT, 5);        // Max 5 sec voor de hele data
 
 /**
  * Google Access Token Helper
- * Vernieuwt de token automatisch als deze verlopen is.
  */
 function getValidAccessToken() {
     global $googleClientID, $googleClientSecret;
 
-    // 1. Haal huidige tokens uit Supabase
     $res = supabaseRequest('google_tokens?select=*&id=eq.1');
     $tokens = $res[0] ?? null;
 
-    if (!$tokens || empty($tokens['refresh_token'])) {
-        return null;
-    }
+    if (!$tokens || empty($tokens['refresh_token'])) return null;
 
-    // 2. Check of de token nog minstens 60 seconden geldig is
     if (!empty($tokens['expires_at']) && strtotime($tokens['expires_at']) > (time() + 60)) {
         return $tokens['access_token'];
     }
 
-    // 3. Token verlopen -> Vernieuwen via Google API
     $ch = curl_init("https://oauth2.googleapis.com/token");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
@@ -109,16 +84,12 @@ function getValidAccessToken() {
 
     if (isset($response['access_token'])) {
         $newExpiry = date('Y-m-d H:i:s', time() + $response['expires_in']);
-        
-        // Update de nieuwe access token in Supabase
         supabaseRequest('google_tokens?id=eq.1', 'PATCH', [
             'access_token' => $response['access_token'],
             'expires_at'   => $newExpiry
         ]);
-        
         return $response['access_token'];
     }
-
     return null;
 }
 ?>
