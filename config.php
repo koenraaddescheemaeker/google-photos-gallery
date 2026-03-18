@@ -1,10 +1,18 @@
 <?php
 // config.php
-$supabaseUrl = "https://supa.forcekes.be"; 
-$supabaseKey = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc3MzQ4MzM2MCwiZXhwIjo0OTI5MTU2OTYwLCJyb2xlIjoic2VydmljZV9yb2xlIn0.U_MZEZsEI0c2VNqDu578m-ItLlmHLQIPN1ndKHWT3pA";
+/**
+ * config.php - Beveiligde Versie (Zonder hardcoded secrets)
+ */
 
-$googleClientID     = "483664701477-4r1lbk3poi9s2rk73snefqs2bs6kho74.apps.googleusercontent.com"; 
-$googleClientSecret = "GOCSPX-Yv_R5v_O9_v_X_v_Y_v_Z_v_Q"; // Vul hier je eigen secret in!
+// 1. Supabase Instellingen
+$supabaseUrl = "https://supa.forcekes.be"; 
+// De Service Role Key is ook een geheim, we halen deze idealiter ook uit ENV
+$supabaseKey = getenv('SUPABASE_SERVICE_ROLE_KEY') ?: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...";
+
+// 2. Google OAuth Instellingen
+// GitHub blokkeert de push als deze waardes hier als platte tekst staan.
+$googleClientID     = getenv('GOOGLE_CLIENT_ID'); 
+$googleClientSecret = getenv('GOOGLE_CLIENT_SECRET');
 $googleRedirectUri  = 'https://forcekes.be/google-callback.php';
 
 function supabaseRequest($endpoint, $method = 'GET', $data = null) {
