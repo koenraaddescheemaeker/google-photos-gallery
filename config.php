@@ -15,23 +15,32 @@ $googleClientID     = getenv('GOOGLE_CLIENT_ID');
 $googleClientSecret = getenv('GOOGLE_CLIENT_SECRET');
 $googleRedirectUri  = 'https://forcekes.be/google-callback.php';
 
+// config.php (Gedeelte van de supabaseRequest functie)
 function supabaseRequest($endpoint, $method = 'GET', $data = null) {
     global $supabaseUrl, $supabaseKey;
     $baseUrl = rtrim($supabaseUrl, '/') . "/rest/v1/" . ltrim($endpoint, '/');
     $ch = curl_init($baseUrl);
     $headers = ["apikey: $supabaseKey", "Authorization: Bearer $supabaseKey", "Content-Type: application/json"];
+    
     if ($method === 'UPSERT') {
         $headers[] = "Prefer: resolution=merge-duplicates";
         curl_setopt($ch, CURLOPT_POST, true);
         $payload = (isset($data[0])) ? $data : [$data];
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    } elseif ($method === 'POST') {
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    } elseif ($method === 'PATCH') {
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH');
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
     } else {
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-        if ($data) curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        // Voor GET requests NOOIT postfields zetten
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
     }
+    
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Fix voor TLS error
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     $response = curl_exec($ch);
     curl_close($ch);
     return json_decode($response, true);

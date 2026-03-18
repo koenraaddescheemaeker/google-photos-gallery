@@ -1,4 +1,5 @@
 <?php
+// google-callback.php
 require_once 'config.php';
 ?>
 <!DOCTYPE html>
@@ -8,15 +9,11 @@ require_once 'config.php';
     <title>Koppelen...</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-50 flex items-center justify-center min-h-screen font-sans">
+<body class="bg-slate-50 flex items-center justify-center min-h-screen">
     <div class="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center">
         <?php
-        if (!isset($_GET['code'])) {
-            echo "<h1 class='text-red-500 font-bold'>Fout</h1><p>Geen autorisatiecode ontvangen.</p>";
-            exit;
-        }
+        if (!isset($_GET['code'])) exit;
 
-        // Token ophalen
         $ch = curl_init("https://oauth2.googleapis.com/token");
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
@@ -32,20 +29,29 @@ require_once 'config.php';
         curl_close($ch);
 
         if (isset($response['access_token'])) {
-            supabaseRequest('google_tokens', 'UPSERT', [
-                'id'            => 1,
-                'access_token'  => $response['access_token'],
-                'refresh_token' => $response['refresh_token'] ?? null,
-                'expires_at'    => date('Y-m-d H:i:s', time() + $response['expires_in'])
-            ]);
-            echo "<div class='animate-bounce text-4xl mb-4'>✅</div>";
-            echo "<h1 class='text-2xl font-semibold text-slate-800'>Gelukt!</h1>";
-            echo "<p class='text-slate-500 mt-2'>Je tokens zijn veilig opgeslagen.</p>";
-            echo "<script>setTimeout(() => { window.location.href = 'admin.php'; }, 2000);</script>";
+            // BOUW DE DATA OP
+            $dbData = [
+                'id'           => 1,
+                'access_token' => $response['access_token'],
+                'expires_at'   => date('Y-m-d H:i:s', time() + $response['expires_in'])
+            ];
+
+            // VOEG REFRESH TOKEN ALLEEN TOE ALS GOOGLE HEM STUURT
+            if (!empty($response['refresh_token'])) {
+                $dbData['refresh_token'] = $response['refresh_token'];
+            }
+
+            // UPSERT (PostgREST zal bestaande velden behouden als ze niet in $dbData zitten, 
+            // mits correct geconfigureerd, maar wij sturen nu alleen wat we hebben)
+            supabaseRequest('google_tokens', 'UPSERT', $dbData);
+
+            echo "<div class='text-4xl mb-4'>✅</div>";
+            echo "<h1 class='text-2xl font-bold'>Gekoppeld!</h1>";
+            echo "<p class='text-slate-500'>Je wordt nu doorgestuurd...</p>";
+            echo "<script>setTimeout(() => { window.location.href = 'admin.php'; }, 1500);</script>";
         } else {
-            echo "<h1 class='text-red-500 font-bold text-xl'>Google weigert toegang</h1>";
-            echo "<p class='text-sm text-slate-400 mt-2'>Check of je Client Secret in config.php klopt.</p>";
-            echo "<pre class='mt-4 p-2 bg-slate-100 rounded text-left text-xs'>" . print_r($response, true) . "</pre>";
+            echo "<h1 class='text-red-500 font-bold'>Fout bij Google</h1>";
+            echo "<pre class='text-xs text-left bg-slate-100 p-2 mt-2'>" . print_r($response, true) . "</pre>";
         }
         ?>
     </div>
