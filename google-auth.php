@@ -1,6 +1,6 @@
 <?php
 /**
- * google-auth.php - De 'Account-Dwang' Editie
+ * google-auth.php - De 'Clean State' Editie
  */
 require_once 'config.php';
 
@@ -8,11 +8,10 @@ $params = [
     'client_id'              => $googleClientID,
     'redirect_uri'           => $googleRedirectUri,
     'response_type'          => 'code',
-    'scope'                  => 'https://www.googleapis.com/auth/photoslibrary.readonly',
+    'scope'                  => $googleScope, // Gebruikt de variabele uit config.php
     'access_type'            => 'offline',
-    // We voegen 'select_account' toe aan de prompt
     'prompt'                 => 'select_account consent', 
-    'include_granted_scopes' => 'true'
+    'include_granted_scopes' => 'false' // Dwingt Google om alleen naar DEZE aanvraag te kijken
 ];
 
 $url = "https://accounts.google.com/o/oauth2/v2/auth?" . http_build_query($params);
