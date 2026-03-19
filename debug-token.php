@@ -1,18 +1,4 @@
 <?php
-require_once 'config.php';
-$token = getValidAccessToken();
-
-if (!$token) die("Geen token gevonden. Log eerst in.");
-
-// Vraag Google om de details van de sleutel
-$url = "https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=" . $token;
-$info = json_decode(file_get_contents($url), true);
-
-echo "<body style='background:#000; color:#fff; font-family:monospace; padding:20px;'>";
-echo "<h1>🔍 Super-Röntgen Diagnose</h1>";
-
-echo "<h3>1. Identiteit van de Sleutel</h3>";
-$tokenClientId = $info['issued_to'] ?? 'ONBEK<?php
 /**
  * super-debug.php - De Ultieme Röntgen Diagnose
  */
@@ -95,33 +81,4 @@ if ($httpCode == 200) {
     echo "</pre>";
 }
 echo "</section>";
-echo "</body>";END';
-$envClientId = getenv('GOOGLE_CLIENT_ID');
-
-echo "Token uitgegeven aan ID: <br><span style='color:#3b82f6'>$tokenClientId</span><br><br>";
-echo "ID in je Coolify .env: <br><span style='color:#3b82f6'>$envClientId</span><br><br>";
-
-if (trim($tokenClientId) === trim($envClientId)) {
-    echo "<b style='color:green'>✅ DE IDENTITEIT MATCHT</b>";
-} else {
-    echo "<b style='color:red'>❌ IDENTITEIT MISMATCH!</b><br>Je app gebruikt een sleutel van een ander project.";
-}
-
-echo "<h3>2. API Toegangstest</h3>";
-// We proberen een simpelere API call om te zien of het de Photos API is of Google in het algemeen
-$ch = curl_init("https://photoslibrary.googleapis.com/v1/albums?pageSize=1");
-curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer $token", "User-Agent: Forcekes-App"]);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-$raw = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-curl_close($ch);
-
-echo "Photos API Response Code: <b>$httpCode</b><br>";
-if ($httpCode == 403) {
-    echo "De deur blijft dicht. <br><b>Raw Response:</b><pre style='background:#222; padding:10px;'>" . htmlspecialchars($raw) . "</pre>";
-} else {
-    echo "<b style='color:green'>DE DEUR IS OPEN!</b>";
-}
-
 echo "</body>";
