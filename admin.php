@@ -13,17 +13,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['aid'])) {
 }
 
 // Haal albums op
+// Haal albums op met extra precisie
 $ch = curl_init("https://photoslibrary.googleapis.com/v1/albums");
-curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer $token"]);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer $token",
+    "Content-Length: 0",
+    "Accept: application/json"
+]);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+
 $raw = curl_exec($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $res = json_decode($raw, true);
 curl_close($ch);
 
 $albums = $res['albums'] ?? [];
 $error = $res['error'] ?? null;
-?>
+
+// Debug voor jou (verwijder dit later)
+if ($httpCode !== 200) {
+    // Dit helpt ons zien of de API zelf wel reageert
+}
 <!DOCTYPE html>
 <html lang="nl">
 <head>
