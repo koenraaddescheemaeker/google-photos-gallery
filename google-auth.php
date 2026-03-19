@@ -12,7 +12,7 @@ $params = [
     'access_type'            => 'offline',
     // DIT IS DE KEY: 'consent' dwingt Google om de vinkjes ALTIJD te tonen
     // 'select_account' zorgt dat je opnieuw je account moet aanklikken
-    'prompt'                 => 'consent select_account', 
+    'prompt'                 => 'consent', 
     'include_granted_scopes' => 'false' // We willen geen oude troep meenemen
 ];
 
