@@ -1,65 +1,63 @@
 <?php
 require_once 'config.php';
 
-echo "<body style='background:#111; color:#10b981; font-family:monospace; padding:40px; line-height:1.6;'>";
-echo "<h1 style='color:#fff;'>🕵️ FORCEKES DIAGNOSTICS</h1>";
-echo "<hr style='border-color:#333; margin-bottom:20px;'>";
+$token = getValidAccessToken();
 
-// STAP 1: CHECK OMGEVINGSVARIABELEN
-echo "<h2 style='color:#60a5fa;'>1. Environment Variables Check</h2>";
-$clientId = getenv('GOOGLE_CLIENT_ID');
-$supabaseUrl = getenv('NEXT_PUBLIC_SUPABASE_URL');
-echo "GOOGLE_CLIENT_ID: " . ($clientId ? "✅ Gevonden (" . substr($clientId, 0, 15) . "...)" : "❌ ONTBREEKT!") . "<br>";
-echo "SUPABASE_URL: " . ($supabaseUrl ? "✅ Gevonden" : "❌ ONTBREEKT!") . "<br><br>";
-
-// STAP 2: DATABASE CHECK
-echo "<h2 style='color:#60a5fa;'>2. Supabase Database Check</h2>";
-$tokens = supabaseRequest('google_tokens?select=*&id=eq.1');
-
-if (isset($tokens['error'])) {
-    echo "<span style='color:#ef4444;'>❌ Fout bij lezen database! Controleer je Supabase Service Key.</span><br>";
-    echo "<pre style='background:#222; padding:10px; color:#ef4444;'>" . print_r($tokens, true) . "</pre>";
-    exit;
-} elseif (empty($tokens)) {
-    echo "<span style='color:#ef4444;'>❌ Database succesvol gelezen, maar er is geen rij met id=1. De INSERT is niet gelukt.</span><br>";
+if (!$token) {
+    echo "<body style='background:#000;color:#fff;font-family:sans-serif;padding:50px;'>";
+    echo "<h2 style='color:#ef4444;'>Geen geldige sleutel!</h2>";
+    echo "<p>De database is leeg of de Refresh Token is ongeldig. Vul de tokens opnieuw in via de SQL Editor.</p>";
     exit;
 }
 
-echo "✅ Database bereikt! Rij met id=1 is gevonden.<br><br>";
-$row = $tokens[0];
-
-// STAP 3: GOOGLE REFRESH CHECK
-echo "<h2 style='color:#60a5fa;'>3. Google Token Refresh Check</h2>";
-echo "We proberen nu de refresh_token in te wisselen voor een verse access_token...<br><br>";
-
-$ch = curl_init("https://oauth2.googleapis.com/token");
+$ch = curl_init("https://photoslibrary.googleapis.com/v1/albums");
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer $token", 
+    "Accept: application/json"
+]);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-    'client_id'     => trim(getenv('GOOGLE_CLIENT_ID')),
-    'client_secret' => trim(getenv('GOOGLE_CLIENT_SECRET')),
-    'refresh_token' => $row['refresh_token'],
-    'grant_type'    => 'refresh_token'
-]));
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-$resRaw = curl_exec($ch);
-$res = json_decode($resRaw, true);
+$raw = curl_exec($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$res = json_decode($raw, true);
+curl_close($ch);
 
-if (isset($res['access_token'])) {
-    echo "<span style='color:#10b981; font-weight:bold; font-size:1.2em;'>🎉 SUCCES! Alles werkt perfect.</span><br>";
-    echo "Google accepteerde de token. Je kunt deze debug-code nu verwijderen en de originele admin.php terugzetten.";
-} else {
-    echo "<span style='color:#ef4444; font-weight:bold; font-size:1.2em;'>❌ FOUT! Google weigert de refresh token.</span><br>";
-    echo "<p>Dit is de letterlijke reactie van Google:</p>";
-    echo "<pre style='background:#222; padding:15px; border-left:4px solid #ef4444; color:#fca5a5;'>" . htmlspecialchars($resRaw) . "</pre>";
-    
-    if (isset($res['error']) && ($res['error'] === 'invalid_client' || $res['error'] === 'invalid_grant')) {
-        echo "<br><div style='background:#3b82f620; padding:15px; border:1px solid #3b82f6; border-radius:8px;'>";
-        echo "<b>💡 CONCLUSIE VAN DE UIL:</b><br>";
-        echo "Je hebt in de Google Playground waarschijnlijk vergeten op het <b>tandwieltje (rechtsboven)</b> te klikken om je eigen Client ID en Secret in te vullen <i>voordat</i> je op Authorize klikte.<br>";
-        echo "Hierdoor is de huidige token gekoppeld aan de Playground, en niet aan Forcekes.";
-        echo "</div>";
-    }
-}
-echo "</body>";
 ?>
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>Forcekes Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-black text-white p-10 font-sans">
+    <div class="max-w-5xl mx-auto">
+        <h1 class="text-3xl font-black italic mb-8">FORCEKES <span class="text-blue-500">ADMIN</span></h1>
+
+        <?php if ($httpCode === 200 && !empty($res['albums'])): ?>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
+                <?php foreach ($res['albums'] as $album): ?>
+                    <div class="bg-zinc-900 p-4 rounded-3xl border border-zinc-800 hover:border-zinc-700 transition-colors">
+                        <?php if(isset($album['coverPhotoBaseUrl'])): ?>
+                            <img src="<?= htmlspecialchars($album['coverPhotoBaseUrl']) ?>=w400-h300-c" class="w-full h-40 object-cover rounded-2xl mb-4 shadow-lg">
+                        <?php else: ?>
+                            <div class="w-full h-40 bg-zinc-800 rounded-2xl mb-4 flex items-center justify-center text-zinc-600 font-medium">Geen cover</div>
+                        <?php endif; ?>
+                        <h3 class="font-bold truncate" title="<?= htmlspecialchars($album['title'] ?? 'Naamloos Album') ?>"><?= htmlspecialchars($album['title'] ?? 'Naamloos Album') ?></h3>
+                        <p class="text-xs text-zinc-500 mt-2"><?= $album['mediaItemsCount'] ?? 0 ?> foto's</p>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php elseif ($httpCode === 200): ?>
+            <div class="bg-zinc-900 p-8 rounded-3xl border border-zinc-800 text-center">
+                <p class="text-zinc-400">Je bent succesvol verbonden met Google Foto's, maar er zijn nog geen albums gevonden in dit account.</p>
+            </div>
+        <?php else: ?>
+            <div class="bg-red-900/20 border border-red-500 p-8 rounded-3xl text-red-400">
+                <h2 class="text-xl font-bold mb-4">🚫 Google API Fout (<?= $httpCode ?>)</h2>
+                <pre class="bg-black p-4 rounded-xl text-sm overflow-auto text-green-400"><?= htmlspecialchars(print_r($res, true)) ?></pre>
+            </div>
+        <?php endif; ?>
+    </div>
+</body>
+</html>
