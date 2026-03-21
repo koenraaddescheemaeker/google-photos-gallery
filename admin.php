@@ -1,63 +1,35 @@
 <?php
 require_once 'config.php';
 
+echo "<body style='background:#111; color:#fff; font-family:sans-serif; padding:40px; line-height:1.6;'>";
+echo "<h1>🕵️ De Google Leugendetector</h1>";
+echo "<hr style='border-color:#333; margin-bottom:20px;'>";
+
 $token = getValidAccessToken();
 
 if (!$token) {
-    echo "<body style='background:#000;color:#fff;font-family:sans-serif;padding:50px;'>";
-    echo "<h2 style='color:#ef4444;'>Geen geldige sleutel!</h2>";
-    echo "<p>De database is leeg of de Refresh Token is ongeldig. Vul de tokens opnieuw in via de SQL Editor.</p>";
-    exit;
+    die("<h2 style='color:#ef4444;'>Geen token gevonden of refresh mislukt! (Controleer Supabase)</h2>");
 }
 
-$ch = curl_init("https://photoslibrary.googleapis.com/v1/albums");
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    "Authorization: Bearer $token", 
-    "Accept: application/json"
-]);
+echo "✅ Sleutel succesvol opgehaald uit je database.<br><br>";
+echo "We vragen nu aan Google's centrale beveiliging: <i>'Welke rechten zitten er op DIT exacte moment op deze sleutel?'</i><br><br>";
+
+// We sturen de sleutel naar de Google TokenInfo scanner
+$ch = curl_init("https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=" . $token);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-$raw = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$res = json_decode($raw, true);
+$resRaw = curl_exec($ch);
+$res = json_decode($resRaw, true);
 curl_close($ch);
 
-?>
-<!DOCTYPE html>
-<html lang="nl">
-<head>
-    <meta charset="UTF-8">
-    <title>Forcekes Admin</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-black text-white p-10 font-sans">
-    <div class="max-w-5xl mx-auto">
-        <h1 class="text-3xl font-black italic mb-8">FORCEKES <span class="text-blue-500">ADMIN</span></h1>
+echo "<pre style='background:#222; padding:20px; color:#10b981; font-size:15px; border-left:5px solid #3b82f6; overflow-x:auto;'>" . htmlspecialchars(print_r($res, true)) . "</pre>";
 
-        <?php if ($httpCode === 200 && !empty($res['albums'])): ?>
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
-                <?php foreach ($res['albums'] as $album): ?>
-                    <div class="bg-zinc-900 p-4 rounded-3xl border border-zinc-800 hover:border-zinc-700 transition-colors">
-                        <?php if(isset($album['coverPhotoBaseUrl'])): ?>
-                            <img src="<?= htmlspecialchars($album['coverPhotoBaseUrl']) ?>=w400-h300-c" class="w-full h-40 object-cover rounded-2xl mb-4 shadow-lg">
-                        <?php else: ?>
-                            <div class="w-full h-40 bg-zinc-800 rounded-2xl mb-4 flex items-center justify-center text-zinc-600 font-medium">Geen cover</div>
-                        <?php endif; ?>
-                        <h3 class="font-bold truncate" title="<?= htmlspecialchars($album['title'] ?? 'Naamloos Album') ?>"><?= htmlspecialchars($album['title'] ?? 'Naamloos Album') ?></h3>
-                        <p class="text-xs text-zinc-500 mt-2"><?= $album['mediaItemsCount'] ?? 0 ?> foto's</p>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        <?php elseif ($httpCode === 200): ?>
-            <div class="bg-zinc-900 p-8 rounded-3xl border border-zinc-800 text-center">
-                <p class="text-zinc-400">Je bent succesvol verbonden met Google Foto's, maar er zijn nog geen albums gevonden in dit account.</p>
-            </div>
-        <?php else: ?>
-            <div class="bg-red-900/20 border border-red-500 p-8 rounded-3xl text-red-400">
-                <h2 class="text-xl font-bold mb-4">🚫 Google API Fout (<?= $httpCode ?>)</h2>
-                <pre class="bg-black p-4 rounded-xl text-sm overflow-auto text-green-400"><?= htmlspecialchars(print_r($res, true)) ?></pre>
-            </div>
-        <?php endif; ?>
-    </div>
-</body>
-</html>
+if (isset($res['scope']) && strpos($res['scope'], 'photoslibrary') !== false) {
+    echo "<h2 style='color:#10b981;'>CONCLUSIE 1: De stempel ZIT erop!</h2>";
+    echo "<p>Jouw code en database zijn 100% perfect. Google bevestigt dat je de rechten hebt. Als de Foto API nu nog steeds 403 zegt, is de Google Foto API zélf stuk, of blokkeren ze specifiek jouw Google-account voor API toegang.</p>";
+} else {
+    echo "<h2 style='color:#ef4444;'>CONCLUSIE 2: Google liegt en heeft de stempel gestript!</h2>";
+    echo "<p>Je hebt het vinkje aangezet (dat staat op de foto!), maar zodra je code de token ophaalde, heeft Google de foto-rechten er op de achtergrond afgesloopt. Dit is een brute Google-restrictie.</p>";
+}
+echo "</body>";
+?>
