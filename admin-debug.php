@@ -3,37 +3,28 @@
 require_once 'config.php';
 require_once 'logger.php';
 
-forcekes_log("--- START DEBUG SESSIE ---");
+forcekes_log("--- START SCOPE CHECK ---");
 
-// 1. Check Env Vars (maskeer de secret voor veiligheid)
-forcekes_log("Check Environment Variables", [
-    'client_id' => substr(getenv('GOOGLE_CLIENT_ID'), 0, 20) . "...",
-    'has_secret' => !empty(getenv('GOOGLE_CLIENT_SECRET')) ? "JA" : "NEE"
-]);
-
-// 2. Haal token uit database via jouw functie
 $token = getValidAccessToken(); 
-forcekes_log("Resultaat getValidAccessToken()", [
-    'access_token_prefix' => $token ? substr($token, 0, 15) . "..." : "GEEN TOKEN"
-]);
 
 if ($token) {
-    // 3. De API aanroep
-    $url = "https://photoslibrary.googleapis.com/v1/albums";
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer $token", "Accept: application/json"]);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    
-    forcekes_log("Google API Response", [
-        'http_code' => $httpCode,
-        'body' => json_decode($response, true)
+    forcekes_log("Token uit script ontvangen", ["prefix" => substr($token, 0, 15)]);
+
+    // Vraag aan Google wat de scopes zijn van DEZE specifieke token
+    $checkUrl = "https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=" . $token;
+    $info = json_decode(file_get_contents($checkUrl), true);
+
+    forcekes_log("Google Token Info", [
+        'azp' => $info['azp'] ?? 'onbekend', // Voor welke client id is dit?
+        'scope' => $info['scope'] ?? 'GEEN SCOPES GEVONDEN',
+        'exp' => $info['exp'] ?? 'n.v.t.'
     ]);
-    curl_close($ch);
+
+    if (!isset($info['scope']) || (strpos($info['scope'], 'photoslibrary') === false)) {
+        forcekes_log("⚠️ CONCLUSIE: Deze token heeft GEEN foto-rechten!");
+    } else {
+        forcekes_log("✅ CONCLUSIE: Token heeft wel rechten. Probleem ligt bij de API-endpoint.");
+    }
 }
 
-// 4. TOON DE LOGS OP HET SCHERM
 display_forcekes_logs();
