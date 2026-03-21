@@ -1,21 +1,23 @@
 <?php
 /**
- * FORCEKES - Centrale Configuratie & Google Auth
- * * Bevat de koppelingen met Coolify Environment Variables en Supabase.
- * Inclusief de specialistische fix voor het behoud van Google Photos Scopes.
+ * FORCEKES - Master Config & Auth Logic
+ * Stack: PHP, Coolify, Supabase, Google Photos API
  */
 
-// 1. Google OAuth Client Instellingen
+// 1. Google OAuth Credentials (uit Coolify Environment)
 $googleClientID     = trim(getenv('GOOGLE_CLIENT_ID'));
 $googleClientSecret = trim(getenv('GOOGLE_CLIENT_SECRET'));
 $googleRedirectUri  = 'https://forcekes.be/google-callback.php';
 
-// 2. Supabase Configuratie
+// 2. Supabase Settings (uit Coolify Environment)
 $supabaseUrl = rtrim(getenv('NEXT_PUBLIC_SUPABASE_URL'), '/');
 $supabaseKey = trim(getenv('SUPABASE_SERVICE_ROLE_KEY'));
 
+// 3. De Master Scope (Alles-in-één voor stabiliteit)
+$masterScope = 'https://www.googleapis.com/auth/photoslibrary';
+
 /**
- * Functie voor communicatie met de Supabase REST API
+ * Supabase Request Helper
  */
 function supabaseRequest($endpoint, $method = 'GET', $data = null) {
     global $supabaseUrl, $supabaseKey;
@@ -31,15 +33,11 @@ function supabaseRequest($endpoint, $method = 'GET', $data = null) {
 
     if ($method === 'POST' || $method === 'UPSERT') {
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-        if ($method === 'UPSERT') {
-            $headers[] = "Prefer: resolution=merge-duplicates";
-        }
+        if ($method === 'UPSERT') $headers[] = "Prefer: resolution=merge-duplicates";
         if ($data) curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
     } elseif ($method === 'PATCH') {
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH');
         if ($data) curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    } elseif ($method === 'DELETE') {
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
     }
 
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
@@ -52,13 +50,12 @@ function supabaseRequest($endpoint, $method = 'GET', $data = null) {
 }
 
 /**
- * Haalt een geldige Google Access Token op.
- * Ververst de token automatisch via de Refresh Token indien nodig.
+ * Haalt de Access Token op en ververst deze indien nodig via de Master Scope
  */
 function getValidAccessToken() {
-    global $googleClientID, $googleClientSecret;
+    global $googleClientID, $googleClientSecret, $masterScope;
     
-    // 1. Haal de huidige token-set op uit Supabase
+    // A. Haal token-rij op uit Supabase
     $tokens = supabaseRequest('google_tokens?select=*&id=eq.1');
     if (empty($tokens) || isset($tokens['error']) || empty($tokens[0])) {
         return false;
@@ -67,12 +64,12 @@ function getValidAccessToken() {
     $row = $tokens[0];
     $expiresAt = strtotime($row['expires_at']);
 
-    // 2. Controleer of de huidige access_token nog minstens 5 minuten geldig is
+    // B. Check of huidige token nog minstens 5 minuten (300 sec) werkt
     if (!empty($row['access_token']) && $row['access_token'] !== 'leeg' && $expiresAt > (time() + 300)) {
         return $row['access_token'];
     }
 
-    // 3. Token is verlopen of niet aanwezig: Verversen via Google API
+    // C. Token is (bijna) verlopen: Refresh uitvoeren
     if (empty($row['refresh_token'])) {
         return false;
     }
@@ -85,22 +82,20 @@ function getValidAccessToken() {
         'client_secret' => $googleClientSecret,
         'refresh_token' => $row['refresh_token'],
         'grant_type'    => 'refresh_token',
-        // CRUCIALE FIX: We dwingen Google om de scopes te behouden tijdens de refresh.
-        // Zonder deze regel stript Google de 'sharing' scope bij ongeverifieerde apps.
-        'scope'         => 'https://www.googleapis.com/auth/photoslibrary.readonly https://www.googleapis.com/auth/photoslibrary.sharing'
+        'scope'         => $masterScope // Dwing Google om alle rechten te behouden
     ]));
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     
     $res = json_decode(curl_exec($ch), true);
     curl_close($ch);
 
-    // 4. Sla de nieuwe access_token en nieuwe verloopdatum op in Supabase
+    // D. Sla de nieuwe token op
     if (isset($res['access_token'])) {
-        $newExpiresAt = date('c', time() + $res['expires_in']); // Gebruik ISO 8601 formaat
+        $isoExpiry = date('c', time() + $res['expires_in']); // ISO 8601 voor Postgres
         
         supabaseRequest('google_tokens?id=eq.1', 'PATCH', [
             'access_token' => $res['access_token'],
-            'expires_at'   => $newExpiresAt
+            'expires_at'   => $isoExpiry
         ]);
         
         return $res['access_token'];
