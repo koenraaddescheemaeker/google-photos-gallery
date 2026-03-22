@@ -1,6 +1,6 @@
 <?php
 /**
- * FORCEKES PORTAAL - Final Config
+ * FORCEKES PORTAAL - Final Config (Sanitized)
  * Domein: new.forcekes.be
  */
 
@@ -12,7 +12,7 @@ $googleRedirectUri  = 'https://new.forcekes.be/google-callback.php';
 $supabaseUrl = rtrim(getenv('NEXT_PUBLIC_SUPABASE_URL'), '/');
 $supabaseKey = trim(getenv('SUPABASE_SERVICE_ROLE_KEY'));
 
-// De enige scope die we nu gebruiken (Master Scope uit image_c1ad4d.png)
+// De Master Scope
 $masterScope = 'https://www.googleapis.com/auth/photoslibrary';
 
 /**
@@ -41,23 +41,27 @@ function supabaseRequest($endpoint, $method = 'GET', $data = null) {
 }
 
 /**
- * Token Validatie & Refresh met Scope-Force
+ * Token Validatie & Refresh
  */
 function getValidAccessToken() {
     global $googleClientID, $googleClientSecret, $masterScope;
     
     $tokens = supabaseRequest('google_tokens?select=*&id=eq.1');
-    if (empty($tokens) || isset($tokens['error']) || empty($tokens[0])) return false;
+    if (empty($tokens) || isset($tokens['error']) || empty($tokens[0])) {
+        return false;
+    }
 
     $row = $tokens[0];
     
-    // Check of de huidige token nog werkt (en niet 'leeg' is)
+    // Check geldigheid (minimaal 5 min over)
     if (!empty($row['access_token']) && $row['access_token'] !== 'leeg' && strtotime($row['expires_at']) > (time() + 300)) {
         return $row['access_token'];
     }
 
-    // Refresh uitvoeren
-    if (empty($row['refresh_token'])) return false;
+    // Refresh nodig
+    if (empty($row['refresh_token'])) {
+        return false;
+    }
 
     $ch = curl_init("https://oauth2.googleapis.com/token");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -67,7 +71,7 @@ function getValidAccessToken() {
         'client_secret' => $googleClientSecret,
         'refresh_token' => $row['refresh_token'],
         'grant_type'    => 'refresh_token',
-        'scope'         => $masterScope // FORCEER MASTER RECHTEN
+        'scope'         => $masterScope
     ]));
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     $res = json_decode(curl_exec($ch), true);
