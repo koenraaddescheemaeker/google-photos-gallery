@@ -1,4 +1,5 @@
 <?php
+// Geen spaties voor deze tag!
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
