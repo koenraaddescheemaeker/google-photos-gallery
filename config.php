@@ -1,30 +1,23 @@
 <?php
-/**
- * FORCEKES PORTAAL - Final Config (Sanitized)
- * Domein: new.forcekes.be
- */
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
-// 1. Omgevingsvariabelen
-$googleClientID     = trim(getenv('GOOGLE_CLIENT_ID'));
+$googleClientID = trim(getenv('GOOGLE_CLIENT_ID'));
 $googleClientSecret = trim(getenv('GOOGLE_CLIENT_SECRET'));
-$googleRedirectUri  = 'https://new.forcekes.be/google-callback.php';
+$googleRedirectUri = 'https://new.forcekes.be/google-callback.php';
 
 $supabaseUrl = rtrim(getenv('NEXT_PUBLIC_SUPABASE_URL'), '/');
 $supabaseKey = trim(getenv('SUPABASE_SERVICE_ROLE_KEY'));
 
-// De Master Scope
 $masterScope = 'https://www.googleapis.com/auth/photoslibrary';
 
-/**
- * Supabase Communicatie
- */
 function supabaseRequest($endpoint, $method = 'GET', $data = null) {
     global $supabaseUrl, $supabaseKey;
-    $url = "$supabaseUrl/rest/v1/$endpoint";
+    $url = $supabaseUrl . "/rest/v1/" . $endpoint;
     $ch = curl_init($url);
     $headers = [
-        "apikey: $supabaseKey",
-        "Authorization: Bearer $supabaseKey",
+        "apikey: " . $supabaseKey,
+        "Authorization: Bearer " . $supabaseKey,
         "Content-Type: application/json",
         "Prefer: return=representation"
     ];
@@ -40,48 +33,33 @@ function supabaseRequest($endpoint, $method = 'GET', $data = null) {
     return json_decode($response, true);
 }
 
-/**
- * Token Validatie & Refresh
- */
 function getValidAccessToken() {
     global $googleClientID, $googleClientSecret, $masterScope;
-    
     $tokens = supabaseRequest('google_tokens?select=*&id=eq.1');
-    if (empty($tokens) || isset($tokens['error']) || empty($tokens[0])) {
-        return false;
-    }
-
+    if (empty($tokens) || isset($tokens['error']) || empty($tokens[0])) return false;
     $row = $tokens[0];
-    
-    // Check geldigheid (minimaal 5 min over)
     if (!empty($row['access_token']) && $row['access_token'] !== 'leeg' && strtotime($row['expires_at']) > (time() + 300)) {
         return $row['access_token'];
     }
-
-    // Refresh nodig
-    if (empty($row['refresh_token'])) {
-        return false;
-    }
-
+    if (empty($row['refresh_token'])) return false;
     $ch = curl_init("https://oauth2.googleapis.com/token");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-        'client_id'     => $googleClientID,
+        'client_id' => $googleClientID,
         'client_secret' => $googleClientSecret,
         'refresh_token' => $row['refresh_token'],
-        'grant_type'    => 'refresh_token',
-        'scope'         => $masterScope
+        'grant_type' => 'refresh_token',
+        'scope' => $masterScope
     ]));
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     $res = json_decode(curl_exec($ch), true);
     curl_close($ch);
-
     if (isset($res['access_token'])) {
         $newExpiry = date('Y-m-d H:i:sO', time() + $res['expires_in']);
         supabaseRequest('google_tokens?id=eq.1', 'PATCH', [
             'access_token' => $res['access_token'],
-            'expires_at'   => $newExpiry
+            'expires_at' => $newExpiry
         ]);
         return $res['access_token'];
     }
