@@ -7,7 +7,7 @@
 // 1. Google OAuth Credentials (uit Coolify Environment)
 $googleClientID     = trim(getenv('GOOGLE_CLIENT_ID'));
 $googleClientSecret = trim(getenv('GOOGLE_CLIENT_SECRET'));
-$googleRedirectUri  = 'https://forcekes.be/google-callback.php';
+$googleRedirectUri  = 'https://new.forcekes.be/google-callback.php';
 
 // 2. Supabase Settings (uit Coolify Environment)
 $supabaseUrl = rtrim(getenv('NEXT_PUBLIC_SUPABASE_URL'), '/');
