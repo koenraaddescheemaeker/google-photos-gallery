@@ -1,96 +1,67 @@
-<?php require_once 'config.php'; ?>
+<?php
+/**
+ * FORCEKES - Zwaaikamer (Jitsi Meet)
+ * Standalone Edition
+ */
+?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>De Zwaaikamer - Familie Portaal</title>
+    <title>Forcekes | Zwaaikamer</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src='https://jitsi.riot.im/external_api.js'></script>
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://8x8.vc/vpaas-magic-cookie-861f8749386d44869507983692686161/external_api.js" async></script>
     <style>
-        #jitsi-container {
-            width: 100%;
-            height: 70vh;
-            border-radius: 1.5rem;
-            overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            background-color: #111827;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #000; overflow: hidden; }
     </style>
 </head>
-<body class="bg-gray-950 text-white font-sans antialiased">
-
-    <?php include 'menu.php'; ?>
-
-    <main class="max-w-7xl mx-auto px-4 py-8">
-        <header class="mb-10 text-center">
-            <h1 class="text-5xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
-                De Zwaaikamer
-            </h1>
-            <p class="text-gray-400 text-lg max-w-2xl mx-auto">
-                Je bent nu zichtbaar voor de familie. Zodra je de kamer verlaat, gaat je lampje weer uit.
-            </p>
+<body class="text-zinc-100">
+    <div class="flex flex-col h-screen">
+        <header class="p-6 flex justify-between items-center border-b border-zinc-800 bg-black/50 backdrop-blur-md">
+            <div class="flex items-center gap-4">
+                <a href="admin.php" class="p-2 hover:bg-zinc-800 rounded-full transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </a>
+                <h1 class="text-2xl font-black italic uppercase tracking-tighter">
+                    FORCEKES <span class="text-blue-500">ZWAAIKAMER</span>
+                </h1>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                <span class="text-[10px] font-bold uppercase tracking-widest opacity-50">Live Mode</span>
+            </div>
         </header>
 
-        <div id="jitsi-container" class="border border-gray-800">
-            </div>
+        <main class="flex-grow bg-zinc-950 relative">
+            <div id="jaas-container" class="absolute inset-0"></div>
+        </main>
+    </div>
 
-        <div class="mt-8 flex justify-center space-x-4">
-            <div class="flex items-center space-x-2 text-sm text-gray-400 bg-gray-900/50 px-4 py-2 rounded-full border border-gray-800">
-                <span class="flex h-2 w-2 rounded-full bg-green-500"></span>
-                <span>Je bent momenteel online</span>
-            </div>
-        </div>
-    </main>
-
-    <script>
-        // 1. Initialiseer Supabase voor Presence
-        const supabaseClient = supabase.createClient('<?= $supabaseUrl ?>', '<?= $supabaseKey ?>');
-        const channel = supabaseClient.channel('zwaaikamer_presence', {
-            config: { presence: { key: 'user' } }
-        });
-
-        // 2. Initialiseer Jitsi
+    <script type="text/javascript">
         window.onload = () => {
-            const domain = "jitsi.riot.im";
-            const options = {
-                roomName: "FamilieZwaaikamer_UniekeNaam12345", 
-                parentNode: document.querySelector('#jitsi-container'),
+            const api = new JitsiMeetExternalAPI("8x8.vc", {
+                roomName: "vpaas-magic-cookie-861f8749386d44869507983692686161/ForcekesZwaaikamer",
+                parentNode: document.querySelector('#jaas-container'),
                 configOverwrite: {
-                    startWithAudioMuted: true,
-                    startWithVideoMuted: false,
-                    toolbarButtons: [
-                        "microphone", "camera", "desktop", "chat", 
-                        "raisehand", "participants-pane", "tileview", 
-                        "hangup", "settings"
-                    ],
-                    disableDeepLinking: true,
+                    disableThirdPartyRequests: true,
+                    prejoinPageEnabled: false,
+                    startWithAudioMuted: false,
+                    startWithVideoMuted: false
                 },
                 interfaceConfigOverwrite: {
-                    SHOW_JITSI_WATERMARK: false,
-                    DEFAULT_REMOTE_DISPLAY_NAME: 'Familielid',
-                }
-            };
-            
-            const api = new JitsiMeetExternalAPI(domain, options);
-
-            // 3. Start Tracking Presence in Supabase
-            channel.subscribe(async (status) => {
-                if (status === 'SUBSCRIBED') {
-                    // We tracken een willekeurige ID of naam om te laten weten dat er IEMAND is
-                    await channel.track({
-                        online_at: new Date().toISOString(),
-                        user_id: Math.random().toString(36).substring(7)
-                    });
+                    TOOLBAR_BUTTONS: [
+                        'microphone', 'camera', 'closedcaptions', 'desktop', 'fullscreen',
+                        'fodeviceselection', 'hangup', 'profile', 'chat', 'recording',
+                        'livestreaming', 'etherpad', 'sharedvideo', 'settings', 'raisehand',
+                        'videoquality', 'filmstrip', 'invite', 'feedback', 'stats', 'shortcuts',
+                        'tileview', 'videobackgroundblur', 'download', 'help', 'mute-everyone',
+                        'security'
+                    ],
                 }
             });
-
-            // 4. Stop tracking als de gebruiker ophangt
-            api.addEventListener('videoConferenceLeft', () => {
-                window.location.href = "index.php";
-            });
-        };
+        }
     </script>
 </body>
 </html>

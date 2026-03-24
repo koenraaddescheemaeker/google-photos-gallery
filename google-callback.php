@@ -1,32 +1,44 @@
 <?php
+/**
+ * FORCEKES - Google Callback Handler
+ */
 require_once 'config.php';
-if (!isset($_GET['code'])) die("Geen toegang verleend.");
 
+if (!isset($_GET['code'])) {
+    die("Geen autorisatiecode ontvangen.");
+}
+
+$code = $_GET['code'];
+
+// 1. Wissel code in voor tokens
 $ch = curl_init("https://oauth2.googleapis.com/token");
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-    'code'          => $_GET['code'],
-    'client_id'     => $googleClientID,
-    'client_secret' => $googleClientSecret,
-    'redirect_uri'  => $googleRedirectUri,
-    'grant_type'    => 'authorization_code'
+    'client_id'     => getenv('GOOGLE_CLIENT_ID'),
+    'client_secret' => getenv('GOOGLE_CLIENT_SECRET'),
+    'code'          => $code,
+    'grant_type'    => 'authorization_code',
+    'redirect_uri'  => 'https://new.forcekes.be/google-callback.php'
 ]));
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-$data = json_decode(curl_exec($ch), true);
+$res = json_decode(curl_exec($ch), true);
 curl_close($ch);
 
-if (isset($data['access_token'])) {
-    $payload = [
-        'id'           => 1,
-        'access_token' => $data['access_token'],
-        'expires_at'   => date('Y-m-d H:i:s', time() + $data['expires_in'])
-    ];
-    if (isset($data['refresh_token'])) {
-        $payload['refresh_token'] = $data['refresh_token'];
-    }
-    supabaseRequest('google_tokens', 'UPSERT', $payload);
-    header('Location: admin.php');
+if (isset($res['refresh_token'])) {
+    // 2. Opslaan in Supabase (ID 1)
+    $expiresAt = date('Y-m-d H:i:sO', time() + $res['expires_in']);
+    
+    $update = supabaseRequest('google_tokens?id=eq.1', 'PATCH', [
+        'access_token'  => $res['access_token'],
+        'refresh_token' => $res['refresh_token'],
+        'expires_at'    => $expiresAt
+    ]);
+
+    header("Location: admin.php?status=success");
+    exit;
 } else {
-    die("Fout bij inwisselen: " . print_r($data, true));
+    echo "<h1>Fout tijdens koppelen</h1><pre>";
+    print_r($res);
+    echo "</pre>";
 }
