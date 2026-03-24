@@ -1,6 +1,6 @@
 <?php
 /**
- * config.php - DE FINITIEVE VERSIE
+ * FORCEKES - config.php
  */
 function supabaseRequest($endpoint, $method = 'GET', $data = null) {
     $url = rtrim(getenv('NEXT_PUBLIC_SUPABASE_URL'), '/') . "/rest/v1/" . $endpoint;
@@ -32,15 +32,14 @@ function getValidAccessToken() {
     if (!$res || !isset($res[0])) return false;
     
     $row = $res[0];
-    $now = time();
     $expires = strtotime($row['expires_at']);
 
-    // Als de token nog minstens 5 minuten geldig is, gebruik hem
-    if (!empty($row['access_token']) && $row['access_token'] !== 'reset' && ($expires - $now) > 300) {
+    // Token nog geldig?
+    if (!empty($row['access_token']) && $row['access_token'] !== 'reset' && ($expires - time()) > 300) {
         return $row['access_token'];
     }
 
-    // Anders: Refreshen
+    // Probeer te refreshen
     if (empty($row['refresh_token']) || $row['refresh_token'] === 'reset') return false;
 
     $ch = curl_init("https://oauth2.googleapis.com/token");
@@ -64,6 +63,5 @@ function getValidAccessToken() {
         ]);
         return $data['access_token'];
     }
-
     return false;
 }
