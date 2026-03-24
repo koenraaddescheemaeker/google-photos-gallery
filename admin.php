@@ -1,87 +1,68 @@
 <?php
 /**
- * FORCEKES - admin.php (Diagnostic Dashboard)
+ * FORCEKES - admin.php (Final Diagnostic)
  */
 require_once 'config.php';
-
 $token = getValidAccessToken();
 
-if (!$token) {
-    header("Location: login.php?pw=admin123");
-    exit;
-}
+if (!$token) { header("Location: login.php?pw=admin123"); exit; }
 
-// 1. Controleer de scopes van de huidige token direct bij Google
-$ch = curl_init("https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=" . $token);
+// Check scopes bij de officiële Google endpoint
+$ch = curl_init("https://oauth2.googleapis.com/tokeninfo?access_token=" . $token);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 $tokenInfo = json_decode(curl_exec($ch), true);
-curl_close($ch);
+$activeScopes = $tokenInfo['scope'] ?? 'GEEN SCOPES';
 
-$activeScopes = $tokenInfo['scope'] ?? 'GEEN SCOPES GEVONDEN';
-
-// 2. Help-functie voor Google Photos API
-function callPhotosAPI($endpoint, $accessToken) {
+function callPhotosAPI($endpoint, $token) {
     $ch = curl_init("https://photoslibrary.googleapis.com/v1/" . $endpoint);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer $accessToken"]);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer $token"]);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    $response = curl_exec($ch);
-    $status = curl_getinfo($ch, curl_getinfo($ch, CURLINFO_HTTP_CODE));
+    $res = json_decode(curl_exec($ch), true);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    return ['status' => $status, 'data' => json_decode($response, true)];
+    return ['code' => $code, 'res' => $res];
 }
 
-$ownRes = callPhotosAPI("albums?pageSize=50", $token);
-$sharedRes = callPhotosAPI("sharedAlbums?pageSize=50", $token);
-$allAlbums = array_merge($ownRes['data']['albums'] ?? [], $sharedRes['data']['sharedAlbums'] ?? []);
+$own = callPhotosAPI("albums?pageSize=50", $token);
+$shared = callPhotosAPI("sharedAlbums?pageSize=50", $token);
+$all = array_merge($own['res']['albums'] ?? [], $shared['res']['sharedAlbums'] ?? []);
 ?>
-
 <!DOCTYPE html>
 <html lang="nl">
-<head>
-    <meta charset="UTF-8">
-    <title>Forcekes | Admin Diagnostic</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap'); body { font-family: 'Inter', sans-serif; background:#000; }</style>
-</head>
-<body class="text-white p-8">
-    <div class="max-w-6xl mx-auto">
-        <h1 class="text-5xl font-black italic uppercase text-blue-500 mb-12 italic">FORCEKES <span class="text-white">DIAGNOSTIC</span></h1>
-
-        <div class="bg-zinc-900 border border-blue-500/50 p-6 rounded-[2rem] mb-12">
-            <h4 class="text-blue-400 font-bold text-xs uppercase tracking-widest mb-3">Actieve Rechten (Scopes)</h4>
-            <div class="bg-black/50 p-4 rounded-xl font-mono text-[11px] text-zinc-400 leading-relaxed break-all">
-                <?= $activeScopes ?>
-            </div>
-            <?php if (strpos($activeScopes, 'photoslibrary') === false): ?>
-                <p class="text-red-500 text-xs font-bold mt-4 animate-pulse">⚠️ WAARSCHUWING: De Photos Library scope ontbreekt!</p>
+<head><meta charset="UTF-8"><script src="https://cdn.tailwindcss.com"></script></head>
+<body class="bg-black text-white p-12 font-sans">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-4xl font-black italic text-blue-500 mb-8 uppercase">DIAGNOSTIEK</h1>
+        
+        <div class="bg-zinc-900 p-8 rounded-[2rem] border border-zinc-800 mb-8">
+            <h2 class="text-xs font-bold uppercase text-zinc-500 mb-4 tracking-widest">Actieve Rechten van Google</h2>
+            <div class="bg-black p-4 rounded-xl text-[10px] font-mono text-blue-400 break-all"><?= $activeScopes ?></div>
+            
+            <?php if(strpos($activeScopes, 'photoslibrary') === false): ?>
+                <div class="mt-6 p-4 bg-red-900/20 border border-red-500 rounded-xl text-red-500 text-xs font-bold">
+                    ❌ FOUT: Google geeft de foto-rechten niet door. <br><br>
+                    Oplossing: Voeg 'koenraad.descheemaeker@gmail.com' toe aan de 'Test Users' in je Google Cloud Console!
+                </div>
             <?php else: ?>
-                <p class="text-green-500 text-xs font-bold mt-4">✅ Photos Library scope is actief.</p>
+                <div class="mt-6 p-4 bg-green-900/20 border border-green-500 rounded-xl text-green-500 text-xs font-bold">
+                    ✅ RECHTEN OK: We hebben toegang tot de bibliotheek.
+                </div>
             <?php endif; ?>
         </div>
 
-        <?php if (!empty($allAlbums)): ?>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <?php foreach ($allAlbums as $album): ?>
-                    <div class="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] overflow-hidden group hover:border-blue-500 transition-all">
-                        <img src="<?= $album['coverPhotoBaseUrl'] ?>=w600-h400-c" class="w-full h-48 object-cover opacity-60">
-                        <div class="p-6">
-                            <h3 class="font-bold truncate"><?= htmlspecialchars($album['title']) ?></h3>
-                        </div>
+        <?php if(!empty($all)): ?>
+            <div class="grid grid-cols-2 gap-6">
+                <?php foreach($all as $a): ?>
+                    <div class="bg-zinc-900 p-4 rounded-2xl border border-zinc-800">
+                        <img src="<?= $a['coverPhotoBaseUrl'] ?>=w400-h300-c" class="rounded-xl mb-4 w-full h-32 object-cover">
+                        <p class="font-bold text-sm truncate"><?= htmlspecialchars($a['title']) ?></p>
                     </div>
                 <?php endforeach; ?>
             </div>
         <?php else: ?>
-            <div class="bg-zinc-950 border-2 border-dashed border-zinc-900 rounded-[3rem] p-20 text-center">
-                <h3 class="text-2xl font-bold text-zinc-500 mb-4">Status: Geen albums zichtbaar</h3>
-                <div class="bg-zinc-900 p-6 rounded-2xl text-left inline-block max-w-full text-[10px] font-mono text-zinc-500">
-                    <p>Google HTTP Status (Eigen): <?= $ownRes['status'] ?></p>
-                    <p>Google HTTP Status (Gedeeld): <?= $sharedRes['status'] ?></p>
-                    <hr class="my-4 border-zinc-800">
-                    <?php print_r(['error_own' => $ownRes['data']['error'] ?? 'none', 'error_shared' => $sharedRes['data']['error'] ?? 'none']); ?>
-                </div>
-            </div>
+            <p class="text-zinc-600 italic">Geen albums gevonden (of nog steeds 403).</p>
         <?php endif; ?>
     </div>
 </body>
