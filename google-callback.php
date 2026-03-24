@@ -1,13 +1,14 @@
 <?php
 /**
- * google-callback.php
+ * google-callback.php - DE DEFINITIEVE VERSIE
  */
 require_once 'config.php';
 
 if (!isset($_GET['code'])) {
-    die("Geen code ontvangen van Google.");
+    die("Geen autorisatiecode ontvangen van Google.");
 }
 
+// 1. Wissel de code in voor een token
 $ch = curl_init("https://oauth2.googleapis.com/token");
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
@@ -23,25 +24,25 @@ $res = json_decode(curl_exec($ch), true);
 curl_close($ch);
 
 if (isset($res['access_token'])) {
-    $expiresAt = date('Y-m-d H:i:sO', time() + ($res['expires_in'] ?? 3600));
+    $expiresAt = date('Y-m-d H:i:sO', time() + $res['expires_in']);
     
-    // We updaten ID 1 met de VOLLEDIGE nieuwe set rechten
+    // 2. Update Supabase geforceerd
     $data = [
         'access_token'  => $res['access_token'],
-        'expires_at'    => $expiresAt
+        'expires_at'    => $expiresAt,
+        'refresh_token' => $res['refresh_token'] ?? null
     ];
-    
-    // Alleen updaten als we een nieuwe refresh_token krijgen
-    if (!empty($res['refresh_token'])) {
-        $data['refresh_token'] = $res['refresh_token'];
-    }
 
-    supabaseRequest('google_tokens?id=eq.1', 'PATCH', $data);
+    // Verwijder lege waarden zodat we bestaande refresh_tokens niet wissen als Google ze niet stuurt
+    $data = array_filter($data);
 
-    header("Location: admin.php?auth=success");
+    $result = supabaseRequest('google_tokens?id=eq.1', 'PATCH', $data);
+
+    // Controleer of de update gelukt is
+    header("Location: admin.php?auth_status=success_and_saved");
     exit;
 } else {
-    echo "<h1>Token Error</h1><pre>";
+    echo "<h1>Fout bij Google:</h1><pre>";
     print_r($res);
     echo "</pre>";
 }
