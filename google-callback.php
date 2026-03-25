@@ -1,11 +1,11 @@
 <?php
 /**
- * FORCEKES - google-callback.php (Final Version)
+ * FORCEKES - google-callback.php
  */
 require_once 'config.php';
 
 if (!isset($_GET['code'])) {
-    die("Geen autorisatiecode ontvangen.");
+    die("Geen code ontvangen.");
 }
 
 $ch = curl_init("https://oauth2.googleapis.com/token");
@@ -34,12 +34,11 @@ if (isset($res['access_token'])) {
         $updateData['refresh_token'] = $res['refresh_token'];
     }
 
-    // Update ID 1 in Supabase
+    // Update de token in Supabase (id=1)
     supabaseRequest('google_tokens?id=eq.1', 'PATCH', $updateData);
 
-    // Direct door naar de admin
     header("Location: admin.php?auth=success");
     exit;
 } else {
-    die("Fout bij het ophalen van de token: " . print_r($res, true));
+    die("Fout bij ophalen token: " . print_r($res, true));
 }

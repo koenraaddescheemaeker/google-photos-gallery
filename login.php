@@ -1,6 +1,6 @@
 <?php
 /**
- * FORCEKES - login.php (Final Version)
+ * FORCEKES - login.php
  */
 $clientID = trim(getenv('GOOGLE_CLIENT_ID'));
 $redirectUri = 'https://new.forcekes.be/google-callback.php';
@@ -26,16 +26,16 @@ if (!isset($_GET['pw']) || $_GET['pw'] !== 'admin123') {
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <title>Forcekes | Login</title>
+    <title>Forcekes | Auth</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap'); body { font-family: 'Inter', sans-serif; background-color: #000; }</style>
 </head>
 <body class="text-white flex items-center justify-center min-h-screen">
     <div class="max-w-md w-full bg-zinc-900 border border-zinc-800 p-12 rounded-[3rem] shadow-2xl text-center">
         <h1 class="text-3xl font-black italic uppercase text-blue-500 mb-6 italic">FORCEKES <span class="text-white">AUTH</span></h1>
-        <p class="text-zinc-500 text-xs mb-10 leading-relaxed italic">De verbinding is bijna klaar. Klik hieronder om de laatste stap te voltooien.</p>
+        <p class="text-zinc-500 text-xs mb-10 leading-relaxed italic">De scopes zijn nu groen. Klik hieronder om de laatste koppeling te bevestigen.</p>
         <a href="<?= $authUrl ?>" class="block w-full py-5 bg-blue-600 hover:bg-blue-500 rounded-2xl font-black uppercase text-[11px] tracking-widest transition-all shadow-lg shadow-blue-900/40">
-            Google Verbinding Starten
+            Google Koppeling Starten
         </a>
     </div>
 </body>
