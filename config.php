@@ -1,46 +1,56 @@
 <?php
 /**
  * FORCEKES - config.php
+ * Gecentraliseerde configuratie en database functies.
  */
+
+// Foutrapportage voor premium debugging
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 function supabaseRequest($endpoint, $method = 'GET', $data = null) {
-    $url = rtrim(getenv('NEXT_PUBLIC_SUPABASE_URL'), '/') . "/rest/v1/" . $endpoint;
-    $key = getenv('SUPABASE_SERVICE_ROLE_KEY');
-    
+    $url = getenv('SUPABASE_URL') . '/rest/v1/' . $endpoint;
+    $apiKey = getenv('SUPABASE_SERVICE_ROLE_KEY');
+
     $ch = curl_init($url);
     $headers = [
-        "apikey: $key",
-        "Authorization: Bearer $key",
+        "apikey: $apiKey",
+        "Authorization: Bearer $apiKey",
         "Content-Type: application/json",
         "Prefer: return=representation"
     ];
-    
-    if ($method === 'PATCH') {
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH');
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    }
-    
+
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    $res = curl_exec($ch);
+
+    if ($data) {
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    }
+
+    $response = curl_exec($ch);
     curl_close($ch);
-    return json_decode($res, true);
+    return json_decode($response, true);
 }
 
 function getValidAccessToken() {
-    $res = supabaseRequest('google_tokens?select=*&id=eq.1');
-    if (!$res || !isset($res[0])) return false;
-    
-    $row = $res[0];
-    $expires = strtotime($row['expires_at']);
+    $res = supabaseRequest('google_tokens?id=eq.1', 'GET');
+    if (!$res || !isset($res[0])) return null;
 
-    // Token nog geldig?
-    if (!empty($row['access_token']) && $row['access_token'] !== 'reset' && ($expires - time()) > 300) {
-        return $row['access_token'];
+    $tokenData = $res[0];
+    $expiresAt = $tokenData['expires_at'] ?? null;
+
+    // Fix voor de strtotime(null) error:
+    if (!$expiresAt || strtotime($expiresAt) < (time() + 60)) {
+        return refreshGoogleToken($tokenData['refresh_token'] ?? null);
     }
 
-    // Probeer te refreshen
-    if (empty($row['refresh_token']) || $row['refresh_token'] === 'reset') return false;
+    return $tokenData['access_token'];
+}
+
+function refreshGoogleToken($refreshToken) {
+    if (!$refreshToken || $refreshToken === 'reset') return null;
 
     $ch = curl_init("https://oauth2.googleapis.com/token");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -48,20 +58,20 @@ function getValidAccessToken() {
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
         'client_id'     => getenv('GOOGLE_CLIENT_ID'),
         'client_secret' => getenv('GOOGLE_CLIENT_SECRET'),
-        'refresh_token' => $row['refresh_token'],
+        'refresh_token' => $refreshToken,
         'grant_type'    => 'refresh_token'
     ]));
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    $data = json_decode(curl_exec($ch), true);
+    $res = json_decode(curl_exec($ch), true);
     curl_close($ch);
 
-    if (isset($data['access_token'])) {
-        $newExpiry = date('Y-m-d H:i:sO', time() + $data['expires_in']);
+    if (isset($res['access_token'])) {
+        $newExpiry = date('Y-m-d H:i:sO', time() + $res['expires_in']);
         supabaseRequest('google_tokens?id=eq.1', 'PATCH', [
-            'access_token' => $data['access_token'],
+            'access_token' => $res['access_token'],
             'expires_at'   => $newExpiry
         ]);
-        return $data['access_token'];
+        return $res['access_token'];
     }
-    return false;
+    return null;
 }
