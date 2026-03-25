@@ -1,6 +1,6 @@
 <?php
 /**
- * FORCEKES - login.php (The Real Deal)
+ * FORCEKES - login.php (Nuclear Scope Edition)
  */
 $clientID = '937650128725-h6c3dbh2hs7q93qjbq95mp34kccqkthp.apps.googleusercontent.com';
 $redirectUri = 'https://new.forcekes.be/google-callback.php';
@@ -9,10 +9,11 @@ $params = [
     'client_id'              => $clientID,
     'redirect_uri'           => $redirectUri,
     'response_type'          => 'code',
-    'scope'                  => 'openid email https://www.googleapis.com/auth/photoslibrary.readonly',
+    // We gaan voor de volle mep (geen .readonly)
+    'scope'                  => 'openid email https://www.googleapis.com/auth/photoslibrary',
     'access_type'            => 'offline',
     'prompt'                 => 'consent select_account',
-    'include_granted_scopes' => 'true', // We voegen deze toe om zeker te zijn
+    'include_granted_scopes' => 'false', 
     'state'                  => bin2hex(random_bytes(16))
 ];
 
@@ -20,21 +21,12 @@ $authUrl = "https://accounts.google.com/o/oauth2/v2/auth?" . http_build_query($p
 ?>
 <!DOCTYPE html>
 <html lang="nl">
-<head>
-    <meta charset="UTF-8">
-    <title>Forcekes | Final Step</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap'); body { font-family: 'Inter', sans-serif; background-color: #000; }</style>
-</head>
-<body class="text-white flex items-center justify-center min-h-screen">
-    <div class="max-w-md w-full bg-zinc-900 border border-zinc-800 p-12 rounded-[3rem] shadow-2xl text-center">
-        <h1 class="text-3xl font-black italic uppercase text-blue-500 mb-6 italic">Final <span class="text-white">Handshake</span></h1>
-        <p class="text-zinc-500 text-xs mb-10 leading-relaxed italic">
-            Nu de verbinding staat, gaan we de kluis openen. <br><strong>Vergeet het vinkje voor je foto's niet!</strong>
-        </p>
-        <a href="<?= $authUrl ?>" class="block w-full py-5 bg-blue-600 hover:bg-blue-500 rounded-2xl font-black uppercase text-[11px] tracking-widest transition-all shadow-lg shadow-blue-900/40">
-            Verbinden & Foto's Laden
-        </a>
+<head><meta charset="UTF-8"><script src="https://cdn.tailwindcss.com"></script></head>
+<body class="bg-black text-white flex items-center justify-center min-h-screen">
+    <div class="bg-zinc-900 p-12 rounded-[3rem] border border-zinc-800 text-center shadow-2xl">
+        <h1 class="text-3xl font-black italic text-blue-500 mb-6 uppercase">Master <span class="text-white">Handshake</span></h1>
+        <p class="text-zinc-500 text-xs mb-8 italic">Vink alle vakjes aan die Google je toont!</p>
+        <a href="<?= $authUrl ?>" class="py-5 px-10 bg-blue-600 rounded-2xl font-bold uppercase text-xs block transition-all shadow-lg shadow-blue-900/40">Verbinding herstarten</a>
     </div>
 </body>
 </html>
