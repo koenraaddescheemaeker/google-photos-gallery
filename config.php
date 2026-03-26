@@ -1,24 +1,25 @@
 <?php
 /**
- * FORCEKES - config.php (Hardcoded Edition)
+ * FORCEKES - config.php (Final Carte Blanche)
  */
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-// --- CONFIGURATIE ---
+// --- HARDCODED CONFIGURATIE ---
 $googleConfig = [
     'client_id'     => '483664701477-oe11ldk8bitgvc8vi2m7ootvrpbb0ki1.apps.googleusercontent.com',
     'client_secret' => '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'
 ];
 
 $supabaseConfig = [
-    'url' => 'https://supa.forcekes.be', // Bijv: https://xyz.supabase.co
+    'url' => 'https://supa.forcekes.be',
     'key' => 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc3MzQ4MzM2MCwiZXhwIjo0OTI5MTU2OTYwLCJyb2xlIjoic2VydmljZV9yb2xlIn0.U_MZEZsEI0c2VNqDu578m-ItLlmHLQIPN1ndKHWT3pA'
 ];
-//was error van mij ---
+
 function supabaseRequest($endpoint, $method = 'GET', $data = null) {
     global $supabaseConfig;
-    $url = rtrim($supabaseConfig['url'], '/') . '/rest/v1/' . $endpoint;
+    // Zorg voor een zuivere URL
+    $url = rtrim($supabaseConfig['url'], '/') . '/rest/v1/' . ltrim($endpoint, '/');
 
     $ch = curl_init($url);
     $headers = [
@@ -38,12 +39,14 @@ function supabaseRequest($endpoint, $method = 'GET', $data = null) {
     }
 
     $response = curl_exec($ch);
+    $err = curl_error($ch);
     curl_close($ch);
+    
+    if ($err) return ['error' => $err];
     return json_decode($response, true);
 }
 
 function getValidAccessToken() {
-    global $googleConfig;
     $res = supabaseRequest('google_tokens?id=eq.1', 'GET');
     if (!$res || !isset($res[0])) return null;
 
