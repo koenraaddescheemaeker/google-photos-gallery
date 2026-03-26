@@ -1,35 +1,38 @@
 <?php
-/**
- * FORCEKES - google-callback.php (Hardcoded Edition)
- */
+/** FORCEKES - google-callback.php */
 require_once 'config.php';
 
-if (!isset($_GET['code'])) die("Geen code ontvangen.");
+if (!isset($_GET['code'])) die("Geen autorisatiecode ontvangen.");
 
 $ch = curl_init("https://oauth2.googleapis.com/token");
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-    'client_id'     => '483664701477-oe11ldk8bitgvc8vi2m7ootvrpbb0ki1.apps.googleusercontent.com',
-    'client_secret' => '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',
-    'code'          => $_GET['code'],
-    'grant_type'    => 'authorization_code',
-    'redirect_uri'  => 'https://new.forcekes.be/google-callback.php'
-]));
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-$res = json_decode(curl_exec($ch), true);
-curl_close($ch);
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST => true,
+    CURLOPT_SSL_VERIFYPEER => false,
+    CURLOPT_POSTFIELDS => http_build_query([
+        'code'          => $_GET['code'],
+        'client_id'     => $googleConfig['client_id'],
+        'client_secret' => $googleConfig['client_secret'],
+        'redirect_uri'  => $googleConfig['redirect_uri'],
+        'grant_type'    => 'authorization_code'
+    ])
+]);
+$res = json_decode(curl_exec($ch), true); curl_close($ch);
 
 if (isset($res['access_token'])) {
-    $updateData = [
+    $expiry = date('c', time() + $res['expires_in']);
+    $data = [
         'access_token' => $res['access_token'],
-        'expires_at'   => date('Y-m-d H:i:sO', time() + $res['expires_in'])
+        'expires_at'   => $expiry
     ];
-    if (isset($res['refresh_token'])) $updateData['refresh_token'] = $res['refresh_token'];
+    // Sla de refresh_token alleen op als die is meegeleverd
+    if (isset($res['refresh_token'])) {
+        $data['refresh_token'] = $res['refresh_token'];
+    }
 
-    supabaseRequest('google_tokens?id=eq.1', 'PATCH', $updateData);
+    supabaseRequest('google_tokens?id=eq.1', 'PATCH', $data);
     header("Location: admin.php?auth=success");
     exit;
 } else {
-    die("Fout: " . json_encode($res));
+    die("Token Exchange Error: " . json_encode($res));
 }
