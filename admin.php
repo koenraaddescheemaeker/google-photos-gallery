@@ -1,63 +1,66 @@
 <?php
 /**
- * FORCEKES - admin.php (Premium Grid)
+ * FORCEKES - admin.php (The Truth Machine)
  */
 require_once 'config.php';
+
+// 1. Check Database Verbinding
+$resDB = supabaseRequest('google_tokens?id=eq.1', 'GET');
+$tokenFromDB = $resDB[0] ?? null;
+
+// 2. Haal token via de officiële functie
 $token = getValidAccessToken();
-$albums = [];
+
+$apiOutput = null;
+$httpCode = null;
 
 if ($token) {
     $ch = curl_init("https://photoslibrary.googleapis.com/v1/albums?pageSize=50");
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer $token", "Accept: application/json"]);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "Authorization: Bearer $token",
+        "Accept: application/json"
+    ]);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    $res = json_decode(curl_exec($ch), true);
-    $albums = $res['albums'] ?? [];
+    $apiOutput = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
 }
+
+$albums = ($apiOutput) ? json_decode($apiOutput, true)['albums'] ?? [] : [];
 ?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <title>Forcekes | Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap'); body { font-family: 'Inter', sans-serif; background-color: #000; }</style>
+    <style>body { background: #000; color: #fff; font-family: sans-serif; }</style>
 </head>
-<body class="bg-black text-white p-12">
-    <div class="max-w-6xl mx-auto">
-        <header class="flex justify-between items-center mb-20 border-b border-zinc-900 pb-8">
-            <h1 class="text-4xl font-black italic uppercase text-blue-600">FORCEKES <span class="text-white opacity-20">/</span> ADMIN</h1>
-            <a href="login.php" class="text-[10px] font-bold uppercase text-zinc-500 hover:text-white tracking-widest transition-all">Reset Sync</a>
-        </header>
+<body class="p-10 text-xs">
+    <h1 class="text-blue-500 font-black text-2xl mb-8 uppercase italic">Diagnostic <span class="text-white">Panel</span></h1>
 
-        <?php if (!empty($albums)): ?>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
-                <?php foreach ($albums as $album): ?>
-                    <div class="group bg-zinc-900 rounded-[3rem] border border-zinc-800 overflow-hidden hover:border-blue-500/50 transition-all duration-500 shadow-2xl">
-                        <div class="aspect-video relative overflow-hidden">
-                            <img src="<?= $album['coverPhotoBaseUrl'] ?>=w600-h450-c" class="w-full h-full object-cover opacity-50 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700">
-                            <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
-                            <div class="absolute bottom-6 left-8">
-                                <h3 class="text-xl font-bold italic uppercase tracking-tighter"><?= htmlspecialchars($album['title']) ?></h3>
-                                <p class="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mt-1"><?= $album['mediaItemsCount'] ?? 0 ?> foto's</p>
-                            </div>
-                        </div>
-                        <div class="p-8">
-                            <form action="save-selection.php" method="POST">
-                                <input type="hidden" name="album_id" value="<?= $album['id'] ?>">
-                                <input type="hidden" name="title" value="<?= htmlspecialchars($album['title']) ?>">
-                                <button type="submit" class="w-full py-4 bg-zinc-800 hover:bg-blue-600 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all">Activeren voor Zwaaikamer</button>
-                            </form>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        <?php else: ?>
-            <div class="bg-zinc-900 border border-zinc-800 rounded-[3rem] p-24 text-center">
-                <p class="text-zinc-500 italic mb-10">Geen verbinding of geen albums gevonden.</p>
-                <a href="login.php" class="px-12 py-5 bg-blue-600 rounded-2xl font-black uppercase text-[11px] tracking-widest">Opnieuw Koppelen</a>
-            </div>
-        <?php endif; ?>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-zinc-900 p-6 rounded-3xl border border-zinc-800">
+            <h2 class="text-zinc-500 font-bold uppercase mb-4 tracking-widest">1. Database Status</h2>
+            <p class="mb-2">Rij gevonden in DB: <span class="<?= $tokenFromDB ? 'text-green-500' : 'text-red-500' ?>"><?= $tokenFromDB ? 'JA' : 'NEE (ID 1 bestaat niet!)' ?></span></p>
+            <p class="mb-2">Access Token aanwezig: <span class="<?= !empty($tokenFromDB['access_token']) ? 'text-green-500' : 'text-red-500' ?>"><?= !empty($tokenFromDB['access_token']) ? 'JA' : 'NEE' ?></span></p>
+            <p>Refresh Token aanwezig: <span class="<?= !empty($tokenFromDB['refresh_token']) ? 'text-green-500' : 'text-red-500' ?>"><?= !empty($tokenFromDB['refresh_token']) ? 'JA' : 'NEE' ?></span></p>
+        </div>
+
+        <div class="bg-zinc-900 p-6 rounded-3xl border border-zinc-800">
+            <h2 class="text-zinc-500 font-bold uppercase mb-4 tracking-widest">2. Google API Status</h2>
+            <p class="mb-2">HTTP Code: <span class="<?= $httpCode == 200 ? 'text-green-500' : 'text-red-500' ?> font-bold"><?= $httpCode ?? 'N/A' ?></span></p>
+            <p>Aantal albums: <span class="text-blue-500 font-bold"><?= count($albums) ?></span></p>
+        </div>
+    </div>
+
+    <div class="mt-6 bg-zinc-900 p-6 rounded-3xl border border-zinc-800">
+        <h2 class="text-zinc-500 font-bold uppercase mb-4 tracking-widest">Raw Google Response</h2>
+        <pre class="bg-black p-4 rounded-xl text-zinc-400 overflow-auto max-h-40"><?= htmlspecialchars($apiOutput ?? 'Geen data') ?></pre>
+    </div>
+
+    <div class="mt-10 text-center">
+        <a href="login.php" class="inline-block px-8 py-4 bg-blue-600 rounded-2xl font-bold uppercase tracking-widest">Nieuwe Handshake</a>
     </div>
 </body>
 </html>
