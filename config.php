@@ -1,21 +1,28 @@
 <?php
 /**
- * FORCEKES - config.php
- * Gecentraliseerde configuratie en database functies.
+ * FORCEKES - config.php (Hardcoded Edition)
  */
-
-// Foutrapportage voor premium debugging
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
+// --- CONFIGURATIE ---
+$googleConfig = [
+    'client_id'     => '483664701477-oe11ldk8bitgvc8vi2m7ootvrpbb0ki1.apps.googleusercontent.com',
+    'client_secret' => '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'
+];
+
+$supabaseConfig = [
+    'url' => 'https://supa.forcekes.be', // Bijv: https://xyz.supabase.co
+    'key' => 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc3MzQ4MzM2MCwiZXhwIjo0OTI5MTU2OTYwLCJyb2xlIjoic2VydmljZV9yb2xlIn0.U_MZEZsEI0c2VNqDu578m-ItLlmHLQIPN1ndKHWT3pA'
+
 function supabaseRequest($endpoint, $method = 'GET', $data = null) {
-    $url = getenv('SUPABASE_URL') . '/rest/v1/' . $endpoint;
-    $apiKey = getenv('SUPABASE_SERVICE_ROLE_KEY');
+    global $supabaseConfig;
+    $url = rtrim($supabaseConfig['url'], '/') . '/rest/v1/' . $endpoint;
 
     $ch = curl_init($url);
     $headers = [
-        "apikey: $apiKey",
-        "Authorization: Bearer $apiKey",
+        "apikey: " . $supabaseConfig['key'],
+        "Authorization: Bearer " . $supabaseConfig['key'],
         "Content-Type: application/json",
         "Prefer: return=representation"
     ];
@@ -35,13 +42,13 @@ function supabaseRequest($endpoint, $method = 'GET', $data = null) {
 }
 
 function getValidAccessToken() {
+    global $googleConfig;
     $res = supabaseRequest('google_tokens?id=eq.1', 'GET');
     if (!$res || !isset($res[0])) return null;
 
     $tokenData = $res[0];
     $expiresAt = $tokenData['expires_at'] ?? null;
 
-    // Fix voor de strtotime(null) error:
     if (!$expiresAt || strtotime($expiresAt) < (time() + 60)) {
         return refreshGoogleToken($tokenData['refresh_token'] ?? null);
     }
@@ -50,14 +57,15 @@ function getValidAccessToken() {
 }
 
 function refreshGoogleToken($refreshToken) {
-    if (!$refreshToken || $refreshToken === 'reset') return null;
+    global $googleConfig;
+    if (!$refreshToken || in_array($refreshToken, ['reset', 'empty'])) return null;
 
     $ch = curl_init("https://oauth2.googleapis.com/token");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-        'client_id'     => getenv('GOOGLE_CLIENT_ID'),
-        'client_secret' => getenv('GOOGLE_CLIENT_SECRET'),
+        'client_id'     => $googleConfig['client_id'],
+        'client_secret' => $googleConfig['client_secret'],
         'refresh_token' => $refreshToken,
         'grant_type'    => 'refresh_token'
     ]));
