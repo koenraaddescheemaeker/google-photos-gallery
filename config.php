@@ -14,7 +14,8 @@ $googleConfig = [
 $supabaseConfig = [
     'url' => 'https://supa.forcekes.be', // Bijv: https://xyz.supabase.co
     'key' => 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc3MzQ4MzM2MCwiZXhwIjo0OTI5MTU2OTYwLCJyb2xlIjoic2VydmljZV9yb2xlIn0.U_MZEZsEI0c2VNqDu578m-ItLlmHLQIPN1ndKHWT3pA'
-
+];
+//was error van mij ---
 function supabaseRequest($endpoint, $method = 'GET', $data = null) {
     global $supabaseConfig;
     $url = rtrim($supabaseConfig['url'], '/') . '/rest/v1/' . $endpoint;
