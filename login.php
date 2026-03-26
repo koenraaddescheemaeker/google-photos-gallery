@@ -1,18 +1,16 @@
 <?php
-/** FORCEKES - login.php */
+// login.php
 require_once 'config.php';
 
-$params = [
-    'client_id'              => $googleConfig['client_id'],
-    'redirect_uri'           => $googleConfig['redirect_uri'],
-    'response_type'          => 'code',
-    'scope'                  => 'openid email https://www.googleapis.com/auth/photoslibrary.readonly',
-    'access_type'            => 'offline',
-    'prompt'                 => 'consent', // Dwingt toestemming en nieuwe refresh_token af
-    'include_granted_scopes' => 'true',
-    'state'                  => bin2hex(random_bytes(16))
-];
+$auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" . http_build_query([
+    'client_id' => $client_id,
+    'redirect_uri' => $redirect_uri,
+    'response_type' => 'code',
+    'scope' => $scopes,
+    'access_type' => 'offline',
+    'prompt' => 'consent', // Cruciaal om een nieuw refresh_token te forceren
+    'include_granted_scopes' => 'true'
+]);
 
-$authUrl = "https://accounts.google.com/o/oauth2/v2/auth?" . http_build_query($params);
-header("Location: $authUrl");
+header('Location: ' . $auth_url);
 exit;

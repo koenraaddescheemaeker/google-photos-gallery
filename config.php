@@ -7,12 +7,10 @@ $googleConfig = [
     'client_secret' => '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',
     'redirect_uri'  => 'https://new.forcekes.be/google-callback.php'
 ];
-
 $supabaseConfig = [
     'url' => 'https://supa.forcekes.be',
     'key' => 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc3MzQ4MzM2MCwiZXhwIjo0OTI5MTU2OTYwLCJyb2xlIjoic2VydmljZV9yb2xlIn0.U_MZEZsEI0c2VNqDu578m-ItLlmHLQIPN1ndKHWT3pA'
 ];
-
 function supabaseRequest($endpoint, $method = 'GET', $data = null) {
     global $supabaseConfig;
     $url = rtrim($supabaseConfig['url'], '/') . '/rest/v1/' . ltrim($endpoint, '/');
@@ -33,21 +31,19 @@ function supabaseRequest($endpoint, $method = 'GET', $data = null) {
     $response = curl_exec($ch); curl_close($ch);
     return json_decode($response, true);
 }
-
 function getValidAccessToken() {
     $res = supabaseRequest('google_tokens?id=eq.1', 'GET');
     if (!$res || !isset($res[0])) return null;
-    
     $tokenData = $res[0];
     $expiresAt = strtotime($tokenData['expires_at']);
-    
+//  
     // Als token bijna verloopt (binnen 5 min), verversen
     if (time() >= ($expiresAt - 300)) {
         return refreshGoogleToken($tokenData['refresh_token']);
     }
     return $tokenData['access_token'];
 }
-
+//
 function refreshGoogleToken($refreshToken) {
     global $googleConfig;
     if (!$refreshToken || in_array($refreshToken, ['reset', 'empty'])) return null;
