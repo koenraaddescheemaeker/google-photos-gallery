@@ -1,66 +1,57 @@
 <?php
-/**
- * FORCEKES - admin.php (The Truth Machine)
- */
+/** FORCEKES - admin.php (Scope Auditor) */
 require_once 'config.php';
 
-// 1. Check Database Verbinding
-$resDB = supabaseRequest('google_tokens?id=eq.1', 'GET');
-$tokenFromDB = $resDB[0] ?? null;
-
-// 2. Haal token via de officiële functie
 $token = getValidAccessToken();
-
-$apiOutput = null;
-$httpCode = null;
+$scopeAudit = null;
+$apiResult = null;
 
 if ($token) {
-    $ch = curl_init("https://photoslibrary.googleapis.com/v1/albums?pageSize=50");
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        "Authorization: Bearer $token",
-        "Accept: application/json"
-    ]);
+    // 1. Controleer wat er ECHT in de token zit
+    $ch = curl_init("https://oauth2.googleapis.com/tokeninfo?access_token=" . $token);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    $apiOutput = curl_exec($ch);
+    $scopeAudit = json_decode(curl_exec($ch), true);
+    curl_close($ch);
+
+    // 2. Probeer de API aan te roepen
+    $ch = curl_init("https://photoslibrary.googleapis.com/v1/albums");
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer $token", "Accept: application/json"]);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $apiResult = json_decode(curl_exec($ch), true);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 }
-
-$albums = ($apiOutput) ? json_decode($apiOutput, true)['albums'] ?? [] : [];
 ?>
 <!DOCTYPE html>
 <html lang="nl">
-<head>
-    <meta charset="UTF-8">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>body { background: #000; color: #fff; font-family: sans-serif; }</style>
-</head>
-<body class="p-10 text-xs">
-    <h1 class="text-blue-500 font-black text-2xl mb-8 uppercase italic">Diagnostic <span class="text-white">Panel</span></h1>
+<head><meta charset="UTF-8"><script src="https://cdn.tailwindcss.com"></script></head>
+<body class="bg-black text-white p-12 font-mono text-[10px]">
+    <h1 class="text-blue-500 text-2xl font-black mb-10 italic uppercase">Audit <span class="text-white">Protocol</span></h1>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-zinc-900 p-6 rounded-3xl border border-zinc-800">
-            <h2 class="text-zinc-500 font-bold uppercase mb-4 tracking-widest">1. Database Status</h2>
-            <p class="mb-2">Rij gevonden in DB: <span class="<?= $tokenFromDB ? 'text-green-500' : 'text-red-500' ?>"><?= $tokenFromDB ? 'JA' : 'NEE (ID 1 bestaat niet!)' ?></span></p>
-            <p class="mb-2">Access Token aanwezig: <span class="<?= !empty($tokenFromDB['access_token']) ? 'text-green-500' : 'text-red-500' ?>"><?= !empty($tokenFromDB['access_token']) ? 'JA' : 'NEE' ?></span></p>
-            <p>Refresh Token aanwezig: <span class="<?= !empty($tokenFromDB['refresh_token']) ? 'text-green-500' : 'text-red-500' ?>"><?= !empty($tokenFromDB['refresh_token']) ? 'JA' : 'NEE' ?></span></p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div class="bg-zinc-900 p-8 rounded-[2rem] border border-zinc-800">
+            <h2 class="text-blue-400 font-bold mb-4 uppercase tracking-widest text-xs">Token Inhoud (Google Server)</h2>
+            <p class="mb-4">Scopes die Google aan jou heeft toegekend:</p>
+            <pre class="bg-black p-4 rounded-xl text-green-400 overflow-auto whitespace-pre-wrap">
+<?= isset($scopeAudit['scope']) ? str_replace(' ', "\n", $scopeAudit['scope']) : 'GEEN SCOPES GEVONDEN' ?>
+            </pre>
+            <?php if (isset($scopeAudit['scope']) && strpos($scopeAudit['scope'], 'photoslibrary') === false): ?>
+                <p class="mt-4 text-red-500 font-bold">❌ FOUT: De 'photoslibrary' scope ontbreekt in je token!</p>
+            <?php endif; ?>
         </div>
 
-        <div class="bg-zinc-900 p-6 rounded-3xl border border-zinc-800">
-            <h2 class="text-zinc-500 font-bold uppercase mb-4 tracking-widest">2. Google API Status</h2>
-            <p class="mb-2">HTTP Code: <span class="<?= $httpCode == 200 ? 'text-green-500' : 'text-red-500' ?> font-bold"><?= $httpCode ?? 'N/A' ?></span></p>
-            <p>Aantal albums: <span class="text-blue-500 font-bold"><?= count($albums) ?></span></p>
+        <div class="bg-zinc-900 p-8 rounded-[2rem] border border-zinc-800">
+            <h2 class="text-blue-400 font-bold mb-4 uppercase tracking-widest text-xs">API Response</h2>
+            <p class="mb-2">HTTP Code: <span class="font-bold"><?= $httpCode ?? 'N/A' ?></span></p>
+            <pre class="bg-black p-4 rounded-xl text-zinc-500 overflow-auto h-48"><?= print_r($apiResult, true) ?></pre>
         </div>
-    </div>
-
-    <div class="mt-6 bg-zinc-900 p-6 rounded-3xl border border-zinc-800">
-        <h2 class="text-zinc-500 font-bold uppercase mb-4 tracking-widest">Raw Google Response</h2>
-        <pre class="bg-black p-4 rounded-xl text-zinc-400 overflow-auto max-h-40"><?= htmlspecialchars($apiOutput ?? 'Geen data') ?></pre>
     </div>
 
     <div class="mt-10 text-center">
-        <a href="login.php" class="inline-block px-8 py-4 bg-blue-600 rounded-2xl font-bold uppercase tracking-widest">Nieuwe Handshake</a>
+        <p class="text-zinc-600 mb-6 italic">Als 'photoslibrary' niet in het linkerblokje staat, weigert Google de scope ondanks je vinkje.</p>
+        <a href="login.php" class="px-10 py-4 bg-zinc-800 hover:bg-white hover:text-black rounded-xl font-bold uppercase tracking-widest transition-all">Nieuwe Handshake</a>
     </div>
 </body>
 </html>

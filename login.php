@@ -1,16 +1,14 @@
 <?php
-// login.php
+/** FORCEKES - login.php (Full Scope Power) */
 require_once 'config.php';
-
-$auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" . http_build_query([
-    'client_id' => $client_id,
-    'redirect_uri' => $redirect_uri,
-    'response_type' => 'code',
-    'scope' => $scopes,
-    'access_type' => 'offline',
-    'prompt' => 'consent', // Cruciaal om een nieuw refresh_token te forceren
+$params = [
+    'client_id'              => $googleConfig['client_id'],
+    'redirect_uri'           => $googleConfig['redirect_uri'],
+    'response_type'          => 'code',
+    'scope'                  => 'openid email https://www.googleapis.com/auth/photoslibrary',
+    'access_type'            => 'offline',
+    'prompt'                 => 'consent',
     'include_granted_scopes' => 'true'
-]);
-
-header('Location: ' . $auth_url);
-exit;
+];
+$authUrl = "https://accounts.google.com/o/oauth2/v2/auth?" . http_build_query($params);
+header("Location: $authUrl"); exit;
