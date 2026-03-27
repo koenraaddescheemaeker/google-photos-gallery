@@ -1,10 +1,8 @@
 <?php
-/** FORCEKES - auth-handler.php (Debug Edition) */
+/** FORCEKES - auth-handler.php (Master Connectivity Edition) */
 require_once 'config.php';
-
 $action = $_GET['action'] ?? '';
 
-// Helper voor Supabase Auth API met betere Error Handling
 function supabaseAuth($endpoint, $data) {
     global $supabaseUrl, $supabaseKey;
     $url = rtrim($supabaseUrl, '/') . "/auth/v1/" . $endpoint;
@@ -16,7 +14,6 @@ function supabaseAuth($endpoint, $data) {
         CURLOPT_POSTFIELDS => json_encode($data),
         CURLOPT_HTTPHEADER => [
             "apikey: $supabaseKey",
-            "Authorization: Bearer $supabaseKey",
             "Content-Type: application/json"
         ],
         CURLOPT_SSL_VERIFYPEER => false
@@ -24,12 +21,8 @@ function supabaseAuth($endpoint, $data) {
     
     $response = curl_exec($ch);
     $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    
-    if(curl_errno($ch)) {
-        return ['status' => 500, 'data' => ['msg' => 'CURL Fout: ' . curl_error($ch)]];
-    }
-    
     curl_close($ch);
+    
     return ['status' => $status, 'data' => json_decode($response, true)];
 }
 
@@ -41,10 +34,9 @@ if ($action === 'register') {
     ]);
 
     if ($res['status'] === 200 || $res['status'] === 201) {
-        header("Location: index.php?view=login&msg=Succes! Je kunt nu inloggen.");
+        header("Location: index.php?view=login&msg=Account aangemaakt!");
     } else {
-        // Schrijf de fout letterlijk uit voor debug
-        die("❌ Registratie Fout (Status ".$res['status']."): " . ($res['data']['msg'] ?? json_encode($res['data'])));
+        die("❌ Registratie Fout: " . ($res['data']['msg'] ?? 'Onbekende fout'));
     }
 }
 
@@ -59,7 +51,16 @@ if ($action === 'login') {
         $_SESSION['user_name'] = $res['data']['user']['user_metadata']['display_name'] ?? 'Familielid';
         header("Location: index.php?view=dashboard");
     } else {
-        die("❌ Login Fout: " . ($res['data']['error_description'] ?? json_encode($res['data'])));
+        die("❌ Login Fout: " . ($res['data']['error_description'] ?? 'E-mail of wachtwoord onjuist'));
+    }
+}
+
+if ($action === 'recover') {
+    $res = supabaseAuth('recover', ['email' => $_POST['email']]);
+    if ($res['status'] === 200) {
+        header("Location: index.php?view=login&msg=Herstel-link verzonden.");
+    } else {
+        die("❌ Herstel Fout: " . ($res['data']['msg'] ?? 'Kon link niet verzenden'));
     }
 }
 
