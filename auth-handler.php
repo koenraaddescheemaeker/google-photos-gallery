@@ -1,10 +1,13 @@
 <?php
-/** FORCEKES - auth-handler.php (Master Connectivity Edition) */
+/** FORCEKES - auth-handler.php (Master Edition) */
 require_once 'config.php';
 $action = $_GET['action'] ?? '';
 
 function supabaseAuth($endpoint, $data) {
     global $supabaseUrl, $supabaseKey;
+    
+    if (!$supabaseUrl) die("❌ Fout: SUPABASE_URL is niet gezet in de omgeving.");
+
     $url = rtrim($supabaseUrl, '/') . "/auth/v1/" . $endpoint;
     
     $ch = curl_init($url);
@@ -36,7 +39,7 @@ if ($action === 'register') {
     if ($res['status'] === 200 || $res['status'] === 201) {
         header("Location: index.php?view=login&msg=Account aangemaakt!");
     } else {
-        die("❌ Registratie Fout: " . ($res['data']['msg'] ?? 'Onbekende fout'));
+        die("❌ Registratie Fout (Status " . $res['status'] . "): " . ($res['data']['msg'] ?? 'Onbekende fout'));
     }
 }
 
