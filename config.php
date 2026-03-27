@@ -4,12 +4,17 @@
  */
 session_start();
 
-// Mappen van Coolify variabelen naar PHP variabelen
-$supabaseUrl = getenv('SUPABASE_URL') ?: getenv('SERVICE_URL_SUPABASEKONG');
-$supabaseKey = getenv('SUPABASE_ANON_KEY') ?: getenv('SERVICE_SUPABASEANON_KEY');
+// We proberen alle variaties die Coolify gebruikt
+$supabaseUrl = getenv('NEXT_PUBLIC_SUPABASE_URL') 
+            ?: getenv('SERVICE_URL_SUPABASEKONG') 
+            ?: getenv('SUPABASE_URL');
+
+$supabaseKey = getenv('SERVICE_SUPABASEANON_KEY') 
+            ?: getenv('SUPABASE_ANON_KEY') 
+            ?: getenv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
 
 /**
- * Algemene functie voor Supabase Database verzoeken (REST API)
+ * Algemene functie voor Supabase Database verzoeken
  */
 function supabaseRequest($endpoint, $method = 'GET', $data = null) {
     global $supabaseUrl, $supabaseKey;
@@ -39,7 +44,6 @@ function supabaseRequest($endpoint, $method = 'GET', $data = null) {
     }
 
     $response = curl_exec($ch);
-    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
     
     return json_decode($response, true);

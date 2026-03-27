@@ -1,23 +1,25 @@
 <?php
-/** * FORCEKES - test-auth.php (Verbeterde Diagnose)
+/** * FORCEKES - test-auth.php 
  */
 require_once 'config.php';
 
 echo "<body style='background:#000;color:#fff;font-family:monospace;padding:50px;line-height:1.6;'>";
-echo "<h2>🔍 Diagnostische Verbindingstest</h2>";
+echo "<h2 style='color:#3b82f6;'>🔍 Verbindingstest Forcekes Portaal</h2>";
 
-// Check of variabelen gevuld zijn
-echo "SUPABASE_URL: " . ($supabaseUrl ? "✅ Gevonden" : "❌ NIET GEVONDEN") . "<br>";
-echo "SUPABASE_KEY: " . ($supabaseKey ? "✅ Gevonden" : "❌ NIET GEVONDEN") . "<br><br>";
+// Debug: laat zien wat PHP ziet (zonder de hele sleutel te tonen voor veiligheid)
+echo "Gevonden URL: " . ($supabaseUrl ?: "<span style='color:red;'>NIET GEVONDEN</span>") . "<br>";
+echo "Gevonden Key: " . ($supabaseKey ? "✅ Aanwezig (begint met " . substr($supabaseKey, 0, 10) . "...)" : "<span style='color:red;'>NIET GEVONDEN</span>") . "<br><br>";
 
 if (!$supabaseUrl || !$supabaseKey) {
-    echo "<div style='color:#f87171;'>STOP: PHP ziet de omgevingsvariabelen niet. Controleer of ze in Coolify als 'Build Variable' OF 'Service Variable' staan.</div>";
+    echo "<div style='background:#450a0a;padding:20px;border-radius:10px;border:1px solid #ef4444;'>";
+    echo "<b>HOUDT OP:</b> De variabelen staan in de Supabase-stack, maar niet in je Web-stack.<br><br>";
+    echo "<b>Oplossing:</b> Ga in Coolify naar je <u>Web/PHP service</u> > Environment Variables en voeg daar toe:<br>";
+    echo "<code>NEXT_PUBLIC_SUPABASE_URL</code> en <code>SERVICE_SUPABASEANON_KEY</code>";
+    echo "</div>";
     exit;
 }
 
 $url = rtrim($supabaseUrl, '/') . "/auth/v1/settings";
-echo "Verbinding maken met: <code>$url</code><br><br>";
-
 $ch = curl_init($url);
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
@@ -28,15 +30,12 @@ curl_setopt_array($ch, [
 
 $res = curl_exec($ch);
 $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$error = curl_error($ch);
 curl_close($ch);
 
 if ($status === 200) {
-    echo "<div style='color:#4ade80; font-weight:bold;'>✅ SUCCES! Status 200. De PHP-app kan praten met Supabase Auth.</div>";
-    echo "<pre style='background:#111;padding:10px;margin-top:10px;'>Settings: " . htmlspecialchars($res) . "</pre>";
+    echo "<div style='color:#4ade80; font-weight:bold;'>✅ SUCCES! Status 200. De brug is geslagen.</div>";
 } else {
-    echo "<div style='color:#f87171; font-weight:bold;'>❌ FOUT: Status $status.</div>";
-    if ($error) echo "CURL ERROR: $error<br>";
-    echo "Respons van server: " . htmlspecialchars($res);
+    echo "<div style='color:#f87171;'>❌ FOUT: Status $status.</div>";
+    echo "Check of de URL <code>$supabaseUrl</code> bereikbaar is vanaf deze container.";
 }
 echo "</body>";
