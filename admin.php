@@ -4,7 +4,7 @@ require_once 'config.php';
 // Verwerk updates van Album IDs
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_config'])) {
     $slug = $_POST['page_slug'];
-    $albumId = $_POST['google_album_id'];
+    $albumId = $_POST['AF1QipOuaNBIr1MZ2XaDHEvK_MWOvHGQ1UZE694sKXoeC5Vsrskccmkrm6nbj-hsTRIYrA?key=dWtDdmNEZUV1eTUteUFjS0xlMHM1aFI3dGhUcWNn'];
     supabaseRequest("page_configs?page_slug=eq.$slug", 'PATCH', ['google_album_id' => $albumId]);
     $msg = "Configuratie voor $slug bijgewerkt!";
 }

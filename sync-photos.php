@@ -1,56 +1,62 @@
 <?php
-/** FORCEKES - sync-photos.php (Multi-Page Engine) */
+/** FORCEKES - sync-photos.php (The Scraper Edition) */
 require_once 'config.php';
 
 header('Content-Type: text/plain');
-echo "🚀 MULTI-PAGE SYNC STARTING...\n";
+echo "🕵️ GOOGLE PHOTOS SCRAPER STARTING...\n";
 
-// 1. Haal alle pagina-configs op uit Supabase
+// 1. Haal de pagina-configs op
 $pages = supabaseRequest('page_configs', 'GET');
-
-if (!$pages) die("❌ Geen pagina-configs gevonden.");
-
-$token = getValidAccessToken();
-if (!$token) die("❌ Token defect.");
 
 foreach ($pages as $page) {
     $slug = $page['page_slug'];
-    $albumId = $page['google_album_id'];
-    
-    if (!$albumId || $albumId == 'ID_VAN_ALBUM') {
-        echo "⚠️ Skipping $slug: Geen geldig Album ID geconfigureerd.\n";
+    $sharedUrl = $page['google_album_id']; // Hier plak je nu de VOLLEDIGE gedeelde link
+
+    if (!filter_var($sharedUrl, FILTER_VALIDATE_URL)) {
+        echo "⚠️ Skipping $slug: Geen geldige URL gevonden.\n";
         continue;
     }
 
-    echo "📂 Syncing '$slug' (Album: $albumId)...\n";
+    echo "📂 Scrapen van '$slug' via link...\n";
 
-    $ch = curl_init("https://photoslibrary.googleapis.com/v1/mediaItems:search");
+    // 2. Haal de HTML op van de gedeelde link
+    $ch = curl_init($sharedUrl);
     curl_setopt_array($ch, [
-        CURLOPT_HTTPHEADER => ["Authorization: Bearer $token", "Content-Type: application/json"],
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => json_encode(['albumId' => $albumId, 'pageSize' => 50]),
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         CURLOPT_SSL_VERIFYPEER => false
     ]);
-
-    $res = json_decode(curl_exec($ch), true);
+    $html = curl_exec($ch);
     curl_close($ch);
 
-    if (isset($res['mediaItems'])) {
-        // Wis oude foto's van deze specifieke categorie
+    // 3. De "Magic" Regex: We zoeken naar de patronen van Google's fotolinks
+    // We zoeken naar URLs die beginnen met https://lh3.googleusercontent.com/pw/
+    preg_match_all('/(https:\/\/lh3\.googleusercontent\.com\/pw\/[a-zA-Z0-0\-_]*)/', $html, $matches);
+
+    if (!empty($matches[0])) {
+        // Verwijder duplicaten (Google zet ze vaak meerdere keren in de broncode)
+        $uniquePhotos = array_unique($matches[0]);
+        
+        echo "📦 " . count($uniquePhotos) . " foto's gevonden. Database bijwerken...\n";
+
+        // Wis oude cache voor deze categorie
         supabaseRequest("album_photos?category=eq.$slug", 'DELETE');
 
-        foreach ($res['mediaItems'] as $item) {
+        foreach ($uniquePhotos as $baseUrl) {
+            // Google Foto's Scraper Truc:
+            // Voeg =w2048-h1024 toe voor HD kwaliteit
+            // Voeg =w400-h400 toe voor de thumbnail
             supabaseRequest('album_photos', 'POST', [
-                'google_id'     => $item['id'],
-                'image_url'     => $item['baseUrl'] . "=w2048-h1024",
-                'thumbnail_url' => $item['baseUrl'] . "=w400-h400",
+                'google_id'     => md5($baseUrl), // We maken een unieke hash als ID
+                'image_url'     => $baseUrl . "=w2048-h1024",
+                'thumbnail_url' => $baseUrl . "=w400-h400",
                 'category'      => $slug
             ]);
         }
-        echo "✅ " . count($res['mediaItems']) . " foto's gesynchroniseerd voor $slug.\n";
+        echo "✅ Sync voor $slug voltooid.\n";
     } else {
-        echo "❌ Fout bij ophalen $slug (Check of ID klopt).\n";
+        echo "❌ Geen foto's gevonden in de HTML. Is het album wel openbaar gedeeld?\n";
     }
 }
-echo "DONE.\n";
+echo "---------------------------\nDONE.";
