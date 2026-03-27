@@ -1,18 +1,13 @@
 <?php
-/** FORCEKES - auth-handler.php (Supabase Auth Integration) */
+/** FORCEKES - auth-handler.php (Debug Edition) */
 require_once 'config.php';
 
 $action = $_GET['action'] ?? '';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $action !== 'logout') {
-    header("Location: index.php");
-    exit;
-}
-
-// Helper voor Supabase Auth API calls
+// Helper voor Supabase Auth API met betere Error Handling
 function supabaseAuth($endpoint, $data) {
     global $supabaseUrl, $supabaseKey;
-    $url = $supabaseUrl . "/auth/v1/" . $endpoint;
+    $url = rtrim($supabaseUrl, '/') . "/auth/v1/" . $endpoint;
     
     $ch = curl_init($url);
     curl_setopt_array($ch, [
@@ -21,6 +16,7 @@ function supabaseAuth($endpoint, $data) {
         CURLOPT_POSTFIELDS => json_encode($data),
         CURLOPT_HTTPHEADER => [
             "apikey: $supabaseKey",
+            "Authorization: Bearer $supabaseKey",
             "Content-Type: application/json"
         ],
         CURLOPT_SSL_VERIFYPEER => false
@@ -28,58 +24,42 @@ function supabaseAuth($endpoint, $data) {
     
     $response = curl_exec($ch);
     $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
     
+    if(curl_errno($ch)) {
+        return ['status' => 500, 'data' => ['msg' => 'CURL Fout: ' . curl_error($ch)]];
+    }
+    
+    curl_close($ch);
     return ['status' => $status, 'data' => json_decode($response, true)];
 }
 
-// --- ACTIONS ---
-
 if ($action === 'register') {
-    $email = $_POST['email'];
-    $password = $_POST['password'];
-    $name = $_POST['name'];
-
     $res = supabaseAuth('signup', [
-        'email' => $email,
-        'password' => $password,
-        'data' => ['display_name' => $name]
+        'email' => $_POST['email'],
+        'password' => $_POST['password'],
+        'data' => ['display_name' => $_POST['name']]
     ]);
 
     if ($res['status'] === 200 || $res['status'] === 201) {
-        // Succes: Gebruiker moet meestal e-mail bevestigen (afhankelijk van Supabase settings)
-        header("Location: index.php?view=login&msg=check_email");
+        header("Location: index.php?view=login&msg=Succes! Je kunt nu inloggen.");
     } else {
-        $error = $res['data']['msg'] ?? 'Registratie mislukt';
-        header("Location: index.php?view=register&error=" . urlencode($error));
+        // Schrijf de fout letterlijk uit voor debug
+        die("❌ Registratie Fout (Status ".$res['status']."): " . ($res['data']['msg'] ?? json_encode($res['data'])));
     }
 }
 
 if ($action === 'login') {
-    $email = $_POST['email'];
-    $password = $_POST['password'];
-
     $res = supabaseAuth('token?grant_type=password', [
-        'email' => $email,
-        'password' => $password
+        'email' => $_POST['email'],
+        'password' => $_POST['password']
     ]);
 
     if ($res['status'] === 200) {
-        // Sessie vullen
         $_SESSION['user_id'] = $res['data']['user']['id'];
         $_SESSION['user_name'] = $res['data']['user']['user_metadata']['display_name'] ?? 'Familielid';
-        $_SESSION['access_token'] = $res['data']['access_token'];
-
-        // Update Presence in database
-        supabaseRequest('presence', 'POST', [
-            'display_name' => $_SESSION['user_name'],
-            'last_seen' => date('c')
-        ]);
-
         header("Location: index.php?view=dashboard");
     } else {
-        $error = $res['data']['error_description'] ?? 'Ongeldige inloggegevens';
-        header("Location: index.php?view=login&error=" . urlencode($error));
+        die("❌ Login Fout: " . ($res['data']['error_description'] ?? json_encode($res['data'])));
     }
 }
 
