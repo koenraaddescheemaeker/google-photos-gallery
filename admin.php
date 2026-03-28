@@ -1,52 +1,50 @@
 <?php
-/** FORCEKES - admin.php (Secure Admin) */
+/** * FORCEKES - admin.php (The Control Center) */
 require_once 'config.php';
 
-// Strikte controle op jouw e-mail
+// Harde check: Alleen Koen mag hier zijn
 if (!isset($_SESSION['user_email']) || $_SESSION['user_email'] !== 'koen@lauwe.com') {
-    header("Location: index.php?view=login&msg=Geen toegang.");
+    header("Location: index.php");
     exit;
 }
-
-$msg = "";
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_config'])) {
-    $slug = $_POST['page_slug'] ?? null;
-    $albumUrl = trim($_POST['google_album_id'] ?? '');
-    if ($slug && !empty($albumUrl)) {
-        supabaseRequest("page_configs?page_slug=eq.$slug", 'PATCH', ['google_album_id' => $albumUrl]);
-        $msg = "Opgeslagen!";
-    }
-}
-
-$pages = supabaseRequest('page_configs?select=*&order=id.asc', 'GET');
 ?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <title>Beheer | Forcekes</title>
+    <title>Forcekes | Beheer</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>body { background-color: #000; color: #fff; font-family: 'Inter', sans-serif; }</style>
 </head>
-<body class="bg-black text-white p-12">
+<body class="bg-black">
     <?php include 'menu.php'; ?>
-    <div class="max-w-4xl mx-auto mt-20">
-        <h1 class="text-4xl font-black italic uppercase mb-8">Admin <span class="text-blue-600">Beheer</span></h1>
-        <?php if($msg): ?>
-            <div class="mb-6 p-4 bg-green-500/10 text-green-500 rounded-xl text-xs font-bold"><?= $msg ?></div>
-        <?php endif; ?>
-        
-        <div class="space-y-6">
-            <?php if(is_array($pages)) foreach ($pages as $p): ?>
-                <form method="POST" class="bg-zinc-900 p-8 rounded-[2rem] border border-white/5 flex flex-col md:flex-row gap-6 items-end">
-                    <input type="hidden" name="page_slug" value="<?= htmlspecialchars($p['page_slug']) ?>">
-                    <div class="flex-grow w-full">
-                        <label class="block text-[10px] font-black uppercase text-zinc-500 mb-2"><?= htmlspecialchars($p['display_name']) ?></label>
-                        <input type="text" name="google_album_id" value="<?= htmlspecialchars($p['google_album_id'] ?? '') ?>" class="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm">
-                    </div>
-                    <button type="submit" name="save_config" class="bg-blue-600 px-8 py-3 rounded-xl text-xs font-black uppercase">Save</button>
-                </form>
-            <?php endforeach; ?>
+
+    <main class="max-w-4xl mx-auto px-6 py-32">
+        <header class="mb-12">
+            <h1 class="text-4xl font-black italic uppercase tracking-tighter">Beheer<span class="text-blue-600">paneel</span></h1>
+            <p class="text-zinc-500 text-sm mt-2 uppercase tracking-widest">Systeemstatus en synchronisatie</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="p-8 bg-zinc-900 rounded-[2.5rem] border border-white/5">
+                <h3 class="text-lg font-bold mb-4">Google Photos Sync</h3>
+                <p class="text-zinc-500 text-xs mb-8 leading-relaxed">
+                    Haal de nieuwste beelden op uit de albums 'Museum' en 'Joris'. Dit proces draait op de achtergrond.
+                </p>
+                <a href="scraper.php?manual=true" class="inline-block px-8 py-4 bg-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition shadow-xl shadow-blue-600/20">
+                    Start Handmatige Sync
+                </a>
+            </div>
+
+            <div class="p-8 bg-zinc-900 rounded-[2.5rem] border border-white/5">
+                <h3 class="text-lg font-bold mb-4">Systeem Info</h3>
+                <ul class="space-y-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                    <li class="flex justify-between"><span>Domein:</span> <span class="text-white">forcekes.be</span></li>
+                    <li class="flex justify-between"><span>Database:</span> <span class="text-green-500">Connected</span></li>
+                    <li class="flex justify-between"><span>Admin:</span> <span class="text-blue-500"><?= $_SESSION['user_email'] ?></span></li>
+                </ul>
+            </div>
         </div>
-    </div>
+    </main>
 </body>
 </html>
