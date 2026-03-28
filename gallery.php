@@ -1,5 +1,5 @@
 <?php
-/** * FORCEKES - gallery.php (Custom Modal v2.2 - MAX SIZE Edition) */
+/** * FORCEKES - gallery.php (Final Custom Modal - MAX DESKTOP SIZE) */
 require_once 'config.php';
 
 $pageSlug = $_GET['page'] ?? 'museum';
@@ -18,7 +18,7 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
         
         body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #000; color: #fff; overflow-x: hidden; }
 
-        /* Premium Modal v2.2 Styling - MAX SIZE */
+        /* Premium Modal v2.3 Styling - MAX SIZE DESKTOP */
         #forcekes-modal.hidden { display: none; }
         #forcekes-modal { 
             position: fixed; inset: 0; z-index: 9999; 
@@ -26,15 +26,17 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
         }
         #modal-overlay { position: absolute; inset: 0; background-color: rgba(0, 0, 0, 0.98); backdrop-filter: blur(20px); }
         
-        /* FIX: Content container centraal en MAXIMAAL */
+        /* FIX: Content container centraal en MAXIMAAL breed/hoog */
         #modal-content { 
             position: relative; z-index: 10000; 
-            width: 100%; height: 100%; /* Vul de volledige modal ruimte */
+            width: 100%; height: 100%; 
             display: flex; align-items: center; justify-content: center; 
             pointer-events: none; 
-            padding: 20px; /* Een kleine veilige marge */
+            /* FIX: Minimale padding voor maximale mediagroote op alle schermen */
+            padding: 10px; 
         }
-        @media (min-width: 768px) { #modal-content { padding: 40px; } }
+        /* Consistent padding op desktop voor maximale grootte */
+        @media (min-width: 768px) { #modal-content { padding: 10px; } }
         
         /* FIX: Media maxi-size, gecentreerd en SCHERP */
         .modal-media { 
@@ -45,6 +47,8 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
             /* Zorgt voor scherpere weergave bij schalen */
             image-rendering: -webkit-optimize-contrast;
             image-rendering: crisp-edges;
+            /* Helpt bij scherp renderen van overgangen */
+            will-change: transform;
         }
         .modal-media.hidden { display: none !important; }
 
