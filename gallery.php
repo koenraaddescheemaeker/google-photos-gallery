@@ -1,5 +1,5 @@
 <?php
-/** * FORCEKES - gallery.php (Custom Modal Edition) */
+/** * FORCEKES - gallery.php (Custom Modal v2.0 - Forced Download) */
 require_once 'config.php';
 
 $pageSlug = $_GET['page'] ?? 'museum';
@@ -18,12 +18,17 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
         
         body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #000; color: #fff; overflow-x: hidden; }
 
-        /* Premium Modal Styling */
+        /* Premium Modal v2.0 Styling */
         #forcekes-modal.hidden { display: none; }
-        #forcekes-modal { position: fixed; inset: 0; z-index: 9999; display: flex; items-center; justify-center; }
-        #modal-overlay { position: absolute; inset: 0; background-color: rgba(0, 0, 0, 0.95); backdrop-filter: blur(10px); }
-        #modal-content { position: relative; z-index: 10000; max-width: 90%; max-height: 90%; display: flex; items-center; justify-center; }
-        .modal-media { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); }
+        #forcekes-modal { position: fixed; inset: 0; z-index: 9999; display: flex; items: center; justify-center; }
+        #modal-overlay { position: absolute; inset: 0; background-color: rgba(0, 0, 0, 0.98); backdrop-filter: blur(20px); }
+        
+        /* FIX: Content container centraal en maximaal */
+        #modal-content { position: relative; z-index: 10000; width: 95%; height: 95%; display: flex; items: center; justify-center; pointer-events: none; }
+        
+        /* FIX: Media maxi-size en gecentreerd */
+        .modal-media { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.8); pointer-events: auto; }
+        .modal-media.hidden { display: none !important; }
 
         /* Modal Controls (Grote, blauwe, werkende knoppen) */
         .modal-btn { position: absolute; z-index: 10010; color: #3b82f6; cursor: pointer; background: none; border: none; padding: 10px; opacity: 0.8; transition: opacity 0.2s; }
@@ -39,9 +44,10 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
             background: #3b82f6; color: white; border-radius: 99px; padding: 14px 28px;
             font-size: 11px; font-weight: 900; text-transform: uppercase; display: none;
             box-shadow: 0 10px 30px rgba(59, 130, 246, 0.5); text-decoration: none;
-            letter-spacing: 1px;
+            letter-spacing: 1px; cursor: pointer; border: none;
         }
         @media (min-width: 768px) { #forcekes-download-btn { bottom: 40px; right: 40px; left: auto; transform: none; } }
+        #forcekes-download-btn.loading { background: #555; cursor: wait; opacity: 0.7; }
     </style>
 </head>
 <body class="bg-black text-white min-h-screen">
@@ -87,7 +93,7 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
         <button id="modal-next" class="modal-btn" aria-label="Volgende"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg></button>
     </div>
 
-    <a href="#" id="forcekes-download-btn" target="_blank" rel="noopener">Media Opslaan</a>
+    <button id="forcekes-download-btn" data-slug="<?= $pageSlug ?>">Media Opslaan</button>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -102,11 +108,12 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
             const galleryItems = document.querySelectorAll('.gallery-item');
 
             let currentIndex = 0;
+            let currentMediaUrl = "";
 
             // Hoofdfunctie om de modal te openen en te vullen
             function openModal(index) {
                 const item = galleryItems[index];
-                const url = item.href;
+                currentMediaUrl = item.href;
                 const type = item.getAttribute('data-type');
                 currentIndex = index;
 
@@ -117,15 +124,14 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
                 modalVideo.src = ""; // Reset video om buffer te wissen
 
                 if (type === 'video') {
-                    modalVideo.src = url;
+                    modalVideo.src = currentMediaUrl;
                     modalVideo.classList.remove('hidden');
                 } else {
-                    modalImg.src = url;
+                    modalImg.src = currentMediaUrl;
                     modalImg.classList.remove('hidden');
                 }
 
-                // Update download knop
-                downloadBtn.href = url;
+                // Toon download knop (JS doet de actie nu)
                 downloadBtn.style.display = 'block';
 
                 modal.classList.remove('hidden');
@@ -153,6 +159,54 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
                 openModal(currentIndex);
             }
 
+            // --- TRUC VAN DE AREND: JS-gestuurde cross-origin download ---
+            async function startDownload() {
+                const url = currentMediaUrl;
+                if (!url) return;
+
+                const originalText = downloadBtn.innerHTML;
+                downloadBtn.innerHTML = "Wachten...";
+                downloadBtn.classList.add('loading');
+                downloadBtn.disabled = true;
+
+                try {
+                    // 1. Download bestand onder water via JS (moet CORS toelaten)
+                    const response = await fetch(url);
+                    const blob = await response.blob();
+                    
+                    // 2. Maak een lokale, tijdelijke 'blob:' URL
+                    const blobUrl = window.URL.createObjectURL(blob);
+                    
+                    // 3. Maak een onzichtbaar linkje en 'klik' erop
+                    const tempLink = document.createElement('a');
+                    tempLink.style.display = 'none';
+                    tempLink.href = blobUrl;
+                    
+                    // Haal bestandsextensie uit de URL
+                    const ext = url.split('.').pop();
+                    const pageSlug = downloadBtn.getAttribute('data-slug');
+                    // Maak een nette bestandsnaam (bv. museum_joris_b5f3...webp)
+                    tempLink.download = `forcekes_${pageSlug}_${url.split('/').pop()}`;
+                    
+                    document.body.appendChild(tempLink);
+                    tempLink.click();
+                    
+                    // 4. Opruimen
+                    document.body.removeChild(tempLink);
+                    window.URL.revokeObjectURL(blobUrl);
+
+                } catch (error) {
+                    console.error("❌ Download gefaald:", error);
+                    alert("Downloaden gefaald. Klik op de afbeelding in het nieuwe tabblad om op te slaan.");
+                    // Als Blob fetch faalt, val dan terug op de oude methode
+                    window.open(url, '_blank');
+                } finally {
+                    downloadBtn.innerHTML = originalText;
+                    downloadBtn.classList.remove('loading');
+                    downloadBtn.disabled = false;
+                }
+            }
+
             // --- Event Listeners ---
 
             // Klik op galerij-item
@@ -168,6 +222,7 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
             modalPrev.addEventListener('click', showPrev);
             modalNext.addEventListener('click', showNext);
             modalOverlay.addEventListener('click', closeModal); // Klik buiten de foto = sluiten
+            downloadBtn.addEventListener('click', startDownload); // De nieuwe JS-actie
 
             // Toetsenbord ondersteuning
             document.addEventListener('keydown', (e) => {
