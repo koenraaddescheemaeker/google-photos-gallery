@@ -1,52 +1,31 @@
 <?php
-/** * FORCEKES - config.php 
- * Haalt variabelen op uit de Docker/Coolify omgeving
- */
-session_start();
+/** * FORCEKES - config.php (Production Edition) */
 
-// We proberen alle variaties die Coolify gebruikt
-$supabaseUrl = getenv('NEXT_PUBLIC_SUPABASE_URL') 
-            ?: getenv('SERVICE_URL_SUPABASEKONG') 
-            ?: getenv('SUPABASE_URL');
+// De officiële nieuwe locatie
+define('SITE_URL', 'https://forcekes.be');
+define('SUPABASE_URL', 'https://supa.forcekes.be'); // Je Supabase subdomein
+define('SUPABASE_KEY', 'JOUW_ANON_KEY');
+define('SUPABASE_SERVICE_KEY', 'JOUW_SERVICE_ROLE_KEY'); // Voor de scraper
 
-$supabaseKey = getenv('SERVICE_SUPABASEANON_KEY') 
-            ?: getenv('SUPABASE_ANON_KEY') 
-            ?: getenv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
-$serviceRoleKey = getenv('SUPABASE_SERVICE_ROLE_KEY')
-            ?: getenv('SERVICE_SUPABASESERVICE_KEY');
 /**
- * Algemene functie voor Supabase Database verzoeken
+ * Centrale functie voor Supabase API requests
  */
 function supabaseRequest($endpoint, $method = 'GET', $data = null) {
-    global $supabaseUrl, $supabaseKey;
-    
-    if (!$supabaseUrl || !$supabaseKey) return ["error" => "Config ontbreekt"];
-
-    $url = rtrim($supabaseUrl, '/') . "/rest/v1/" . $endpoint;
-    
+    $url = rtrim(SUPABASE_URL, '/') . '/rest/v1/' . $endpoint;
     $ch = curl_init($url);
     $headers = [
-        "apikey: $supabaseKey",
-        "Authorization: Bearer $supabaseKey",
-        "Content-Type: application/json",
-        "Prefer: return=representation"
+        'apikey: ' . SUPABASE_KEY,
+        'Authorization: Bearer ' . SUPABASE_KEY,
+        'Content-Type: application/json',
+        'Prefer: return=representation'
     ];
 
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_CUSTOMREQUEST => $method,
-        CURLOPT_HTTPHEADER => $headers,
-        CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_TIMEOUT => 10
-    ]);
-
-    if ($data) {
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    }
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    if ($data) curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
 
     $response = curl_exec($ch);
     curl_close($ch);
-    
     return json_decode($response, true);
 }
-?>
