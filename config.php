@@ -12,7 +12,8 @@ $supabaseUrl = getenv('NEXT_PUBLIC_SUPABASE_URL')
 $supabaseKey = getenv('SERVICE_SUPABASEANON_KEY') 
             ?: getenv('SUPABASE_ANON_KEY') 
             ?: getenv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
-
+$serviceRoleKey = getenv('SUPABASE_SERVICE_ROLE_KEY')
+            ?: getenv('SERVICE_SUPABASESERVICE_KEY');
 /**
  * Algemene functie voor Supabase Database verzoeken
  */
