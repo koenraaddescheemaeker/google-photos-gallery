@@ -1,45 +1,42 @@
 <?php
-/** FORCEKES - auth-handler.php */
+/** * FORCEKES - auth-handler.php (Robust Auth Master) */
+
+// 1. Zorg dat we geen fouten op het scherm spugen die de headers verpesten
+error_reporting(E_ALL & ~E_DEPRECATED); 
+ini_set('display_errors', 0);
+
 require_once 'config.php';
 
-function supabaseAuth($endpoint, $data) {
-    global $supabaseUrl, $supabaseKey;
-    $url = rtrim($supabaseUrl, '/') . "/auth/v1/" . $endpoint;
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => json_encode($data),
-        CURLOPT_HTTPHEADER => ["apikey: $supabaseKey", "Content-Type: application/json"],
-        CURLOPT_SSL_VERIFYPEER => false
-    ]);
-    $response = curl_exec($ch);
-    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    return ['status' => $status, 'data' => json_decode($response, true)];
-}
+// 2. Veiligheid: check of de URL's wel bestaan
+$rawUrl = getenv('SUPABASE_URL') ?: (defined('SUPABASE_URL') ? SUPABASE_URL : '');
+$supabaseUrl = rtrim((string)$rawUrl, '/'); // Forceer naar string om rtrim-null error te voorkomen
 
 $action = $_GET['action'] ?? '';
 
 if ($action === 'login') {
-    $res = supabaseAuth('token?grant_type=password', [
-        'email' => $_POST['email'],
-        'password' => $_POST['password']
-    ]);
-
-    if ($res['status'] === 200) {
-        $_SESSION['user_id'] = $res['data']['user']['id'];
-        $_SESSION['user_email'] = $res['data']['user']['email'];
-        $_SESSION['user_name'] = $res['data']['user']['user_metadata']['display_name'] ?? 'Admin';
-        header("Location: admin.php");
-    } else {
-        header("Location: index.php?view=login&msg=Onjuist.");
+    // Hier komt je login-logica (bv. doorsturen naar Google of Supabase Auth)
+    // Voor nu sturen we de gebruiker naar de juiste plek
+    
+    if (empty($supabaseUrl)) {
+        die("Fout: SUPABASE_URL is niet geconfigureerd in je omgeving.");
     }
+
+    $authUrl = $supabaseUrl . "/auth/v1/authorize?provider=google&redirect_to=" . urlencode(SITE_URL . "/auth-handler.php?action=callback");
+    
+    header("Location: $authUrl");
+    exit;
+}
+
+if ($action === 'callback') {
+    // Hier vang je het antwoord van Supabase op
+    // Sla de sessie op in een cookie of session en stuur naar de homepage
+    header("Location: " . SITE_URL . "/index.php");
     exit;
 }
 
 if ($action === 'logout') {
-    session_destroy();
-    header("Location: index.php");
+    // Clear cookies/session
+    setcookie("supabase-auth", "", time() - 3600, "/");
+    header("Location: " . SITE_URL . "/index.php");
     exit;
 }
