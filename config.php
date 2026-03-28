@@ -1,57 +1,48 @@
 <?php
-/**
- * FORCEKES - config.php
- * Centraal configuratiebestand met robuuste sessie- en database-afhandeling.
- */
+/** * FORCEKES - config.php (Super-Glue Edition) */
 
-// 1. SESSIE MANAGEMENT: Altijd als eerste starten
+// 1. Forceer sessie start direct bij de eerste byte
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// 2. DOMEIN & OMGEVINGSVARIABELEN
 define('SITE_URL', 'https://forcekes.be');
-
-// URL detectie (gebruikt Coolify env of fallback naar supa.forcekes.be)
-$envUrl = getenv('SUPABASE_URL') ?: getenv('NEXT_PUBLIC_SUPABASE_URL') ?: 'https://supa.forcekes.be';
+$envUrl = getenv('SUPABASE_URL') ?: 'https://supa.forcekes.be';
 define('SUPABASE_URL', rtrim((string)$envUrl, '/'));
-
-// Sleutel detectie (zoekt naar alle mogelijke aliassen uit Coolify)
-$envKey = getenv('SUPABASE_KEY') ?: getenv('SERVICE_SUPABASEANON_KEY') ?: getenv('SUPABASE_ANON_KEY');
+$envKey = getenv('SUPABASE_KEY') ?: getenv('SERVICE_SUPABASEANON_KEY');
 define('SUPABASE_KEY', (string)$envKey);
-
-// Service Key (nodig voor admin acties indien van toepassing)
 define('SUPABASE_SERVICE_KEY', (string)getenv('SUPABASE_SERVICE_ROLE_KEY'));
 
 /**
- * Centrale functie voor Supabase REST API requests
+ * SESSIE HERSTEL: Als de sessie leeg is maar de cookie bestaat,
+ * halen we de gebruikersgegevens opnieuw op bij Supabase.
  */
-function supabaseRequest($endpoint, $method = 'GET', $data = null) {
-    if (!SUPABASE_KEY || SUPABASE_KEY === "") {
-        return ['error' => true, 'message' => 'Geen API sleutel geconfigureerd.'];
-    }
+if (!isset($_SESSION['user_email']) && isset($_COOKIE['sb-access-token'])) {
+    $token = $_COOKIE['sb-access-token'];
+    $ch = curl_init(SUPABASE_URL . '/auth/v1/user');
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'apikey: ' . SUPABASE_KEY,
+        'Authorization: Bearer ' . $token
+    ]);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $userData = json_decode(curl_exec($ch), true);
+    curl_close($ch);
 
+    if (isset($userData['email'])) {
+        $_SESSION['user_id'] = $userData['id'];
+        $_SESSION['user_email'] = $userData['email'];
+    }
+}
+
+function supabaseRequest($endpoint, $method = 'GET', $data = null) {
     $url = SUPABASE_URL . '/rest/v1/' . $endpoint;
     $ch = curl_init($url);
-    
-    $headers = [
-        'apikey: ' . SUPABASE_KEY,
-        'Authorization: Bearer ' . SUPABASE_KEY,
-        'Content-Type: application/json',
-        'Prefer: return=representation'
-    ];
-
+    $headers = ['apikey: '.SUPABASE_KEY, 'Authorization: Bearer '.SUPABASE_KEY, 'Content-Type: application/json'];
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    
-    if ($data) {
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    }
-
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    if ($data) curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    $res = curl_exec($ch);
     curl_close($ch);
-
-    return json_decode($response, true);
+    return json_decode($res, true);
 }
