@@ -1,22 +1,23 @@
 <?php
-/** * FORCEKES - gallery.php (Error-Proof & Full Viewport) */
+/** * FORCEKES - gallery.php (Fixed Albums: Museum & Joris) */
 require_once 'config.php';
 
+// De slug bepaalt welk album we laden (standaard museum)
 $pageSlug = $_GET['page'] ?? 'museum';
 $photos = supabaseRequest("album_photos?category=eq.$pageSlug&select=*&order=captured_at.desc", 'GET');
-$displayName = ucfirst(htmlspecialchars($pageSlug));
 
-// CHECK-POINT: Is de data die we terugkrijgen wel een lijst met foto's?
+// Dynamische naam voor de titels
+$displayName = ($pageSlug === 'joris') ? 'Joris' : ucfirst(htmlspecialchars($pageSlug));
+
 $hasError = false;
 $errorMessage = "";
 
 if (!is_array($photos)) {
     $hasError = true;
-    $errorMessage = "De database reageerde niet met een lijst. Mogelijk is de verbinding verbroken.";
+    $errorMessage = "Databaseverbinding mislukt.";
 } elseif (isset($photos['message'])) {
-    // Supabase stuurt soms een array terug met een 'message' als er iets fout is (bv. foute tabelnaam)
     $hasError = true;
-    $errorMessage = "Supabase Fout: " . $photos['message'];
+    $errorMessage = "Supabase meldt: " . $photos['message'];
 }
 ?>
 <!DOCTYPE html>
@@ -29,46 +30,20 @@ if (!is_array($photos)) {
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #000; color: #fff; overflow-x: hidden; }
-
-        /* Modal & Sizing */
-        #forcekes-modal { 
-            position: fixed; inset: 0; z-index: 9999; 
-            display: none; align-items: center; justify-content: center; 
-            background-color: #000; 
-        }
-        #modal-content { 
-            position: relative; z-index: 10000; 
-            width: 95vw; height: 85vh; 
-            display: flex; align-items: center; justify-content: center; 
-            pointer-events: none; 
-        }
-        .modal-media { 
-            width: 100% !important; height: 100% !important; 
-            object-fit: contain; pointer-events: auto; 
-            image-rendering: -webkit-optimize-contrast;
-            filter: drop-shadow(0 0 50px rgba(0,0,0,1));
-        }
+        
+        /* Modal - Solid Black */
+        #forcekes-modal { position: fixed; inset: 0; z-index: 9999; display: none; align-items: center; justify-content: center; background-color: #000; }
+        #modal-content { position: relative; z-index: 10000; width: 95vw; height: 85vh; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+        .modal-media { width: 100% !important; height: 100% !important; object-fit: contain; pointer-events: auto; image-rendering: -webkit-optimize-contrast; }
         .modal-media.hidden { display: none !important; }
 
-        /* Buttons */
-        .modal-btn { 
-            position: absolute; z-index: 10010; color: #3b82f6; 
-            background: rgba(255,255,255,0.05); border: none; cursor: pointer; 
-            border-radius: 99px; transition: all 0.2s ease;
-            display: flex; align-items: center; justify-content: center;
-            backdrop-filter: blur(5px);
-        }
+        .modal-btn { position: absolute; z-index: 10010; color: #3b82f6; background: rgba(255,255,255,0.05); border: none; cursor: pointer; border-radius: 99px; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .modal-btn:hover { background: #3b82f6; color: white; transform: scale(1.1); }
-        #modal-close { top: 25px; right: 25px; width: 60px; height: 60px; font-size: 3rem; font-weight: 200; }
+        #modal-close { top: 25px; right: 25px; width: 60px; height: 60px; font-size: 3rem; }
         #modal-prev { left: 20px; top: 50%; transform: translateY(-50%); width: 60px; height: 60px; }
         #modal-next { right: 20px; top: 50%; transform: translateY(-50%); width: 60px; height: 60px; }
 
-        #forcekes-download-btn {
-            position: fixed; bottom: 30px; right: 30px; z-index: 10100;
-            background: #3b82f6; color: white; border-radius: 99px; padding: 16px 32px;
-            font-size: 11px; font-weight: 900; text-transform: uppercase; display: none;
-            box-shadow: 0 10px 40px rgba(59, 130, 246, 0.6); border: none; letter-spacing: 2px;
-        }
+        #forcekes-download-btn { position: fixed; bottom: 30px; right: 30px; z-index: 10100; background: #3b82f6; color: white; border-radius: 99px; padding: 16px 32px; font-size: 11px; font-weight: 900; text-transform: uppercase; display: none; box-shadow: 0 10px 40px rgba(59, 130, 246, 0.6); border: none; letter-spacing: 2px; cursor: pointer; }
     </style>
 </head>
 <body class="bg-black">
@@ -82,16 +57,13 @@ if (!is_array($photos)) {
 
         <?php if ($hasError): ?>
             <div class="bg-zinc-900 border border-red-900/50 p-8 rounded-[2rem] text-center">
-                <p class="text-red-500 font-bold mb-2">Oeps! Er ging iets mis bij het ophalen van het museum.</p>
-                <p class="text-zinc-500 text-sm"><?= htmlspecialchars($errorMessage) ?></p>
+                <p class="text-red-500 font-bold"><?= htmlspecialchars($errorMessage) ?></p>
             </div>
         <?php else: ?>
             <div class="gallery grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
                 <?php if (!empty($photos)): ?>
                     <?php foreach ($photos as $index => $p): 
-                        // Veiligheidscheck: bestaat de key 'image_url'?
                         if (!is_array($p) || !isset($p['image_url'])) continue;
-                        
                         $url = htmlspecialchars($p['image_url']);
                         $isVid = (strpos($url, '.webm') !== false);
                     ?>
@@ -109,10 +81,9 @@ if (!is_array($photos)) {
                         </a>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <p class="text-zinc-500 italic">Dit gedeelte van het museum is momenteel leeg...</p>
-                <?php if ($pageSlug === 'museum'): ?>
-                    <p class="text-xs text-blue-400 mt-4">Tip: Controleer of de tabel 'album_photos' in Supabase gevuld is.</p>
-                <?php endif; ?>
+                    <div class="col-span-full py-20 text-center border border-dashed border-white/10 rounded-[3rem]">
+                        <p class="text-zinc-500 italic">Dit gedeelte van <strong><?= strtolower($displayName) ?></strong> is momenteel leeg...</p>
+                    </div>
                 <?php endif; ?>
             </div>
         <?php endif; ?>
@@ -140,17 +111,15 @@ if (!is_array($photos)) {
             let currentIndex = 0; let currentMediaUrl = "";
 
             function openModal(index) {
-                const item = galleryItems[index]; 
-                if(!item) return;
-                currentMediaUrl = item.href; 
-                currentIndex = index;
+                const item = galleryItems[index]; if(!item) return;
+                currentMediaUrl = item.href; currentIndex = index;
                 modalImg.classList.add('hidden'); modalVideo.classList.add('hidden');
                 modalVideo.pause(); modalVideo.src = "";
                 if (item.getAttribute('data-type') === 'video') { modalVideo.src = currentMediaUrl; modalVideo.classList.remove('hidden'); }
                 else { modalImg.src = currentMediaUrl; modalImg.classList.remove('hidden'); }
                 modal.style.display = 'flex'; downloadBtn.style.display = 'block'; document.body.style.overflow = 'hidden';
             }
-            function closeModal() { modal.style.display = 'none'; modalVideo.pause(); modalVideo.src = ""; downloadBtn.style.display = 'none'; document.body.style.overflow = 'auto'; }
+            function closeModal() { modal.style.display = 'none'; modalVideo.pause(); modalVideo.src = ""; downloadBtn.style.display = 'none'; document.body.style.overflow = ''; }
             function navigate(direction) { currentIndex = (currentIndex + direction + galleryItems.length) % galleryItems.length; openModal(currentIndex); }
             galleryItems.forEach((item, index) => { item.addEventListener('click', (e) => { e.preventDefault(); openModal(index); }); });
             document.getElementById('modal-close').onclick = closeModal;
