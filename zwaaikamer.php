@@ -1,18 +1,10 @@
 <?php
-/**
- * FORCEKES - Zwaaikamer (Publieke Editie)
- * Geen login vereist voor familieleden.
- */
+/** * FORCEKES - zwaaikamer.php (Evolix Premium Edition) */
 require_once 'config.php';
 
-// 1. Haal de gesyncte foto's op voor de sfeervolle achtergrond
-$photosRes = supabaseRequest('album_photos?category=eq.zwaaikamer&select=image_url', 'GET');
-$photoUrls = (is_array($photosRes) && !empty($photosRes)) ? array_column($photosRes, 'image_url') : [];
-
-// Fallback afbeelding mocht het album leeg zijn
-if (empty($photoUrls)) {
-    $photoUrls = ['https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1920&q=80'];
-}
+// We maken een unieke kamernaam voor de familie
+$roomName = "Forcekes_Zwaaikamer_Familie";
+$jitsiDomain = "meet.evolix.org";
 ?>
 <!DOCTYPE html>
 <html lang="nl">
@@ -21,87 +13,77 @@ if (empty($photoUrls)) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Forcekes | Zwaaikamer</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://meet.jit.si/external_api.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #000; overflow: hidden; }
         
-        .slideshow-img {
-            transition: opacity 2s ease-in-out;
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            filter: brightness(0.25) blur(5px);
-        }
-        .jitsi-glass {
-            background: rgba(24, 24, 27, 0.4);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+        /* Deep Black Theme: Geen afleiding, puur beeld */
+        body { margin: 0; padding: 0; background-color: #000; color: #fff; font-family: 'Inter', sans-serif; overflow: hidden; }
+        #jitsi-container { width: 100vw; height: 100vh; background-color: #000; }
+        
+        /* Subtiele loader */
+        #loader {
+            position: fixed; inset: 0; background: #000; z-index: 100;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.8s ease;
         }
     </style>
 </head>
-<body class="text-zinc-100 flex flex-col h-screen">
+<body>
 
-    <div class="z-50 relative">
-        <?php include 'menu.php'; ?>
+    <div id="loader">
+        <div class="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">Verbinding maken met Evolix...</p>
     </div>
 
-    <div id="slideshow-container" class="fixed inset-0 z-0">
-        <?php foreach ($photoUrls as $index => $url): ?>
-            <img src="<?= htmlspecialchars($url) ?>" 
-                 class="slideshow-img <?= $index === 0 ? 'opacity-100' : 'opacity-0' ?>" 
-                 data-index="<?= $index ?>">
-        <?php endforeach; ?>
-    </div>
+    <div id="jitsi-container"></div>
 
-    <main class="flex-grow relative z-10 p-4 md:p-8 pt-28">
-        <div id="jitsi-container" class="w-full h-full rounded-[3rem] overflow-hidden shadow-2xl jitsi-glass"></div>
-    </main>
-
-    <script type="text/javascript">
-        // 1. Slideshow Logica
-        const images = document.querySelectorAll('.slideshow-img');
-        let currentIndex = 0;
-        if (images.length > 1) {
-            setInterval(() => {
-                images[currentIndex].classList.replace('opacity-100', 'opacity-0');
-                currentIndex = (currentIndex + 1) % images.length;
-                images[currentIndex].classList.replace('opacity-0', 'opacity-100');
-            }, 12000);
-        }
-
-        // 2. Jitsi Configuratie
+    <script src="https://<?= $jitsiDomain ?>/external_api.js"></script>
+    <script>
         window.onload = () => {
-            const domain = "meet.jit.si";
-            // We gebruiken een unieke, lange kamernaam om beveiligingsmeldingen te voorkomen
-            const uniqueRoomName = "ForcekesZwaaikamer_Premium_v2_Secure"; 
-
+            const domain = "<?= $jitsiDomain ?>";
             const options = {
-                roomName: uniqueRoomName,
+                roomName: "<?= $roomName ?>",
                 width: "100%",
                 height: "100%",
                 parentNode: document.querySelector('#jitsi-container'),
+                lang: 'nl',
                 configOverwrite: {
-                    prejoinPageEnabled: false,
-                    startWithAudioMuted: false,
-                    startWithVideoMuted: false,
+                    prejoinPageEnabled: false,      // Direct de kamer in
+                    startWithAudioMuted: false,     // Direct praten
+                    startWithVideoMuted: false,     // Direct zwaaien
+                    disableDeepLinking: true,       // Geen gezeur over apps op mobiel
+                    enableLobbyChat: false,
                     enableWelcomePage: false,
+                    disableModeratorIndicator: true,
+                    requireDisplayName: true,
                     toolbarButtons: [
-                        'microphone', 'camera', 'desktop', 'chat', 
-                        'participants-pane', 'tileview', 'hangup', 'settings'
+                        'microphone', 'camera', 'fullscreen', 'fodeviceselection', 
+                        'hangup', 'profile', 'chat', 'settings', 'tileview'
                     ]
                 },
                 interfaceConfigOverwrite: {
                     SHOW_JITSI_WATERMARK: false,
-                    SHOW_WATERMARK_FOR_GUESTS: false,
+                    SHOW_BRAND_WATERMARK: false,
+                    SHOW_POWERED_BY: false,
                     DEFAULT_BACKGROUND: '#000000',
-                    TOOLBAR_BUTTONS: [] // Forceert de knoppen uit configOverwrite
+                    DISABLE_VIDEO_BACKGROUND: true
                 }
             };
+
             const api = new JitsiMeetExternalAPI(domain, options);
-        }
+
+            // Verberg de zwarte loader zodra de verbinding staat
+            api.addEventListener('videoConferenceJoined', () => {
+                const loader = document.getElementById('loader');
+                if(loader) {
+                    loader.style.opacity = '0';
+                    setTimeout(() => loader.remove(), 800);
+                }
+            });
+
+            // Stel de naam in voor de familie-ervaring
+            api.executeCommand('displayName', 'Familie Forcekes');
+        };
     </script>
 </body>
 </html>
