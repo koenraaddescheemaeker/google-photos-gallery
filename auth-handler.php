@@ -1,42 +1,53 @@
 <?php
-/** * FORCEKES - auth-handler.php (Robust Auth Master) */
+/** * FORCEKES - auth-handler.php (Email/Password Auth) */
 
-// 1. Zorg dat we geen fouten op het scherm spugen die de headers verpesten
 error_reporting(E_ALL & ~E_DEPRECATED); 
 ini_set('display_errors', 0);
 
 require_once 'config.php';
 
-// 2. Veiligheid: check of de URL's wel bestaan
 $rawUrl = getenv('SUPABASE_URL') ?: (defined('SUPABASE_URL') ? SUPABASE_URL : '');
-$supabaseUrl = rtrim((string)$rawUrl, '/'); // Forceer naar string om rtrim-null error te voorkomen
+$supabaseUrl = rtrim((string)$rawUrl, '/');
 
 $action = $_GET['action'] ?? '';
 
-if ($action === 'login') {
-    // Hier komt je login-logica (bv. doorsturen naar Google of Supabase Auth)
-    // Voor nu sturen we de gebruiker naar de juiste plek
-    
-    if (empty($supabaseUrl)) {
-        die("Fout: SUPABASE_URL is niet geconfigureerd in je omgeving.");
+// Als je een inlogformulier hebt dat hierheen post
+if ($action === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = $_POST['email'] ?? '';
+    $password = $_POST['password'] ?? '';
+
+    $data = [
+        'email' => $email,
+        'password' => $password
+    ];
+
+    // We schieten de login direct naar je eigen Supabase
+    $ch = curl_init($supabaseUrl . "/auth/v1/token?grant_type=password");
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'apikey: ' . SUPABASE_KEY,
+        'Content-Type: application/json'
+    ]);
+
+    $response = json_decode(curl_exec($ch), true);
+    curl_close($ch);
+
+    if (isset($response['access_token'])) {
+        // Login succes! Sla het token op in een cookie voor 1 week
+        setcookie("sb-access-token", $response['access_token'], time() + (86400 * 7), "/", "", true, true);
+        header("Location: index.php");
+        exit;
+    } else {
+        header("Location: login.php?error=invalid_credentials");
+        exit;
     }
-
-    $authUrl = $supabaseUrl . "/auth/v1/authorize?provider=google&redirect_to=" . urlencode(SITE_URL . "/auth-handler.php?action=callback");
-    
-    header("Location: $authUrl");
-    exit;
 }
 
-if ($action === 'callback') {
-    // Hier vang je het antwoord van Supabase op
-    // Sla de sessie op in een cookie of session en stuur naar de homepage
-    header("Location: " . SITE_URL . "/index.php");
-    exit;
-}
-
+// Uitloggen
 if ($action === 'logout') {
-    // Clear cookies/session
-    setcookie("supabase-auth", "", time() - 3600, "/");
-    header("Location: " . SITE_URL . "/index.php");
+    setcookie("sb-access-token", "", time() - 3600, "/");
+    header("Location: index.php");
     exit;
 }

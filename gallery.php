@@ -1,10 +1,23 @@
 <?php
-/** * FORCEKES - gallery.php (Production Master - Full Viewport) */
+/** * FORCEKES - gallery.php (Error-Proof & Full Viewport) */
 require_once 'config.php';
 
 $pageSlug = $_GET['page'] ?? 'museum';
 $photos = supabaseRequest("album_photos?category=eq.$pageSlug&select=*&order=captured_at.desc", 'GET');
 $displayName = ucfirst(htmlspecialchars($pageSlug));
+
+// CHECK-POINT: Is de data die we terugkrijgen wel een lijst met foto's?
+$hasError = false;
+$errorMessage = "";
+
+if (!is_array($photos)) {
+    $hasError = true;
+    $errorMessage = "De database reageerde niet met een lijst. Mogelijk is de verbinding verbroken.";
+} elseif (isset($photos['message'])) {
+    // Supabase stuurt soms een array terug met een 'message' als er iets fout is (bv. foute tabelnaam)
+    $hasError = true;
+    $errorMessage = "Supabase Fout: " . $photos['message'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="nl">
@@ -17,20 +30,18 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #000; color: #fff; overflow-x: hidden; }
 
-        /* Modal: Full Screen Experience */
+        /* Modal & Sizing */
         #forcekes-modal { 
             position: fixed; inset: 0; z-index: 9999; 
             display: none; align-items: center; justify-content: center; 
-            background-color: rgba(0, 0, 0, 0.98); backdrop-filter: blur(25px);
+            background-color: #000; 
         }
-
         #modal-content { 
             position: relative; z-index: 10000; 
             width: 95vw; height: 85vh; 
             display: flex; align-items: center; justify-content: center; 
             pointer-events: none; 
         }
-        
         .modal-media { 
             width: 100% !important; height: 100% !important; 
             object-fit: contain; pointer-events: auto; 
@@ -39,10 +50,10 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
         }
         .modal-media.hidden { display: none !important; }
 
-        /* Controls */
+        /* Buttons */
         .modal-btn { 
             position: absolute; z-index: 10010; color: #3b82f6; 
-            background: rgba(0,0,0,0.6); border: none; cursor: pointer; 
+            background: rgba(255,255,255,0.05); border: none; cursor: pointer; 
             border-radius: 99px; transition: all 0.2s ease;
             display: flex; align-items: center; justify-content: center;
             backdrop-filter: blur(5px);
@@ -58,45 +69,67 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
             font-size: 11px; font-weight: 900; text-transform: uppercase; display: none;
             box-shadow: 0 10px 40px rgba(59, 130, 246, 0.6); border: none; letter-spacing: 2px;
         }
-        @media (max-width: 768px) {
-            #forcekes-download-btn { left: 50%; right: auto; transform: translateX(-50%); width: 80%; text-align: center; }
-        }
     </style>
 </head>
 <body class="bg-black">
     <?php include 'menu.php'; ?>
+
     <main class="max-w-7xl mx-auto px-6 py-8 md:py-20 mt-20">
         <header class="mb-10 md:mb-16">
             <h1 class="text-3xl md:text-6xl font-black italic uppercase tracking-tighter leading-none"><?= $displayName ?></h1>
             <div class="h-1 md:h-2 w-16 md:w-24 bg-blue-600 mt-4 rounded-full"></div>
         </header>
-        <div class="gallery grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
-            <?php if (is_array($photos) && !empty($photos)): ?>
-                <?php foreach ($photos as $index => $p): 
-                    $isVid = (strpos($p['image_url'], '.webm') !== false);
-                    $url = htmlspecialchars($p['image_url']);
-                ?>
-                    <a href="<?= $url ?>" class="gallery-item group" data-index="<?= $index ?>" data-type="<?= $isVid ? 'video' : 'image' ?>">
-                        <div class="aspect-square rounded-[1.8rem] md:rounded-[3rem] overflow-hidden border border-white/5 bg-zinc-900 relative">
-                            <?php if ($isVid): ?>
-                                <video src="<?= $url ?>#t=0.1" class="w-full h-full object-cover opacity-60" muted playsinline></video>
-                                <div class="absolute inset-0 flex items-center justify-center"><div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center pl-1"><svg fill="white" viewBox="0 0 24 24" class="w-6 h-6"><path d="M8 5v14l11-7z"/></svg></div></div>
-                            <?php else: ?>
-                                <img src="<?= $url ?>" class="w-full h-full object-cover group-hover:scale-110 transition duration-700" loading="lazy">
-                            <?php endif; ?>
-                        </div>
-                    </a>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
+
+        <?php if ($hasError): ?>
+            <div class="bg-zinc-900 border border-red-900/50 p-8 rounded-[2rem] text-center">
+                <p class="text-red-500 font-bold mb-2">Oeps! Er ging iets mis bij het ophalen van het museum.</p>
+                <p class="text-zinc-500 text-sm"><?= htmlspecialchars($errorMessage) ?></p>
+            </div>
+        <?php else: ?>
+            <div class="gallery grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
+                <?php if (!empty($photos)): ?>
+                    <?php foreach ($photos as $index => $p): 
+                        // Veiligheidscheck: bestaat de key 'image_url'?
+                        if (!is_array($p) || !isset($p['image_url'])) continue;
+                        
+                        $url = htmlspecialchars($p['image_url']);
+                        $isVid = (strpos($url, '.webm') !== false);
+                    ?>
+                        <a href="<?= $url ?>" class="gallery-item group" data-index="<?= $index ?>" data-type="<?= $isVid ? 'video' : 'image' ?>">
+                            <div class="aspect-square rounded-[1.8rem] md:rounded-[3rem] overflow-hidden border border-white/5 bg-zinc-900 relative">
+                                <?php if ($isVid): ?>
+                                    <video src="<?= $url ?>#t=0.1" class="w-full h-full object-cover opacity-60" muted playsinline></video>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center pl-1"><svg fill="white" viewBox="0 0 24 24" class="w-6 h-6"><path d="M8 5v14l11-7z"/></svg></div>
+                                    </div>
+                                <?php else: ?>
+                                    <img src="<?= $url ?>" class="w-full h-full object-cover group-hover:scale-110 transition duration-700" loading="lazy">
+                                <?php endif; ?>
+                            </div>
+                        </a>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <p class="text-zinc-500 italic">Dit gedeelte van het museum is momenteel leeg...</p>
+                <?php if ($pageSlug === 'museum'): ?>
+                    <p class="text-xs text-blue-400 mt-4">Tip: Controleer of de tabel 'album_photos' in Supabase gevuld is.</p>
+                <?php endif; ?>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
     </main>
+
     <div id="forcekes-modal">
         <button id="modal-close" class="modal-btn">&times;</button>
         <button id="modal-prev" class="modal-btn"><svg width="30" height="30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
-        <div id="modal-content"><img id="modal-img" class="modal-media hidden"><video id="modal-video" class="modal-media hidden" controls autoplay loop playsinline></video></div>
+        <div id="modal-content">
+            <img id="modal-img" class="modal-media hidden">
+            <video id="modal-video" class="modal-media hidden" controls autoplay loop playsinline></video>
+        </div>
         <button id="modal-next" class="modal-btn"><svg width="30" height="30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
     </div>
+
     <button id="forcekes-download-btn">Media Opslaan</button>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const modal = document.getElementById('forcekes-modal');
@@ -107,7 +140,10 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
             let currentIndex = 0; let currentMediaUrl = "";
 
             function openModal(index) {
-                const item = galleryItems[index]; currentMediaUrl = item.href; currentIndex = index;
+                const item = galleryItems[index]; 
+                if(!item) return;
+                currentMediaUrl = item.href; 
+                currentIndex = index;
                 modalImg.classList.add('hidden'); modalVideo.classList.add('hidden');
                 modalVideo.pause(); modalVideo.src = "";
                 if (item.getAttribute('data-type') === 'video') { modalVideo.src = currentMediaUrl; modalVideo.classList.remove('hidden'); }
