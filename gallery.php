@@ -1,5 +1,5 @@
 <?php
-/** * FORCEKES - gallery.php (Custom Modal v2.1 - Fixed Centering & Download) */
+/** * FORCEKES - gallery.php (Custom Modal v2.2 - MAX SIZE Edition) */
 require_once 'config.php';
 
 $pageSlug = $_GET['page'] ?? 'museum';
@@ -18,7 +18,7 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
         
         body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #000; color: #fff; overflow-x: hidden; }
 
-        /* Premium Modal v2.1 Styling */
+        /* Premium Modal v2.2 Styling - MAX SIZE */
         #forcekes-modal.hidden { display: none; }
         #forcekes-modal { 
             position: fixed; inset: 0; z-index: 9999; 
@@ -26,30 +26,42 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
         }
         #modal-overlay { position: absolute; inset: 0; background-color: rgba(0, 0, 0, 0.98); backdrop-filter: blur(20px); }
         
-        /* FIX: Content container centraal en maximaal */
+        /* FIX: Content container centraal en MAXIMAAL */
         #modal-content { 
             position: relative; z-index: 10000; 
-            width: 95%; height: 95%; 
+            width: 100%; height: 100%; /* Vul de volledige modal ruimte */
             display: flex; align-items: center; justify-content: center; 
             pointer-events: none; 
+            padding: 20px; /* Een kleine veilige marge */
         }
+        @media (min-width: 768px) { #modal-content { padding: 40px; } }
         
-        /* FIX: Media maxi-size en gecentreerd */
+        /* FIX: Media maxi-size, gecentreerd en SCHERP */
         .modal-media { 
             max-width: 100%; max-height: 100%; 
-            object-fit: contain; 
+            object-fit: contain; /* Behou aspect ratio, vul maximaal */
             box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.8); 
             pointer-events: auto; 
+            /* Zorgt voor scherpere weergave bij schalen */
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
         }
         .modal-media.hidden { display: none !important; }
 
-        /* Modal Controls */
-        .modal-btn { position: absolute; z-index: 10010; color: #3b82f6; cursor: pointer; background: none; border: none; padding: 10px; opacity: 0.8; transition: opacity 0.2s; }
-        .modal-btn:hover { opacity: 1; }
-        #modal-close { top: 20px; right: 20px; font-size: 3.5rem; font-weight: 100; line-height: 1; padding: 0 15px; }
-        #modal-prev { left: 20px; top: 50%; transform: translateY(-50%); font-size: 4rem; }
-        #modal-next { right: 20px; top: 50%; transform: translateY(-50%); font-size: 4rem; }
-        #modal-prev svg, #modal-next svg { width: 32px; height: 32px; }
+        /* Modal Controls - Forceer zichtbaarheid en grootte */
+        .modal-btn { position: absolute; z-index: 10010; color: #3b82f6; cursor: pointer; background: rgba(0,0,0,0.5); border: none; padding: 10px; opacity: 0.8; transition: opacity 0.2s; border-radius: 99px; }
+        .modal-btn:hover { opacity: 1; background: rgba(0,0,0,0.8); }
+        #modal-close { top: 20px; right: 20px; font-size: 2.5rem; font-weight: 300; line-height: 1; padding: 10px 18px; }
+        #modal-prev { left: 20px; top: 50%; transform: translateY(-50%); font-size: 3rem; }
+        #modal-next { right: 20px; top: 50%; transform: translateY(-50%); font-size: 3rem; }
+        #modal-prev svg, #modal-next svg { width: 24px; height: 24px; }
+        
+        @media (min-width: 768px) {
+            #modal-close { font-size: 3.5rem; padding: 10px 22px; }
+            #modal-prev { font-size: 4rem; }
+            #modal-next { font-size: 4rem; }
+            #modal-prev svg, #modal-next svg { width: 32px; height: 32px; }
+        }
 
         /* Download Knop Styling */
         #forcekes-download-btn {
@@ -71,7 +83,7 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
             <div class="h-1 md:h-2 w-16 md:w-24 bg-blue-600 mt-4 rounded-full"></div>
         </header>
 
-        <div class="gallery grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
+        <div class="gallery grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8 gallery-wrapper">
             <?php if (is_array($photos) && !empty($photos)): ?>
                 <?php foreach ($photos as $index => $p): 
                     $isVid = (strpos($p['image_url'], '.webm') !== false);
@@ -99,7 +111,8 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
         <div id="modal-content">
             <img id="modal-img" class="modal-media hidden" src="" alt="">
             <video id="modal-video" class="modal-media hidden" controls autoplay loop playsinline></video>
-        </div> <button id="modal-close" class="modal-btn" aria-label="Sluiten">&times;</button>
+        </div> 
+        <button id="modal-close" class="modal-btn" aria-label="Sluiten">&times;</button>
         <button id="modal-prev" class="modal-btn" aria-label="Vorige"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg></button>
         <button id="modal-next" class="modal-btn" aria-label="Volgende"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg></button>
     </div>
@@ -164,10 +177,8 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
                 openModal(currentIndex);
             }
 
-            // --- De Bevermethode: Directe Forceer-Download ---
             function startDownload() {
                 if (!currentMediaUrl) return;
-                // We sturen de gebruiker naar onze proxy met de file URL
                 window.location.href = 'download.php?file=' + encodeURIComponent(currentMediaUrl);
             }
 
