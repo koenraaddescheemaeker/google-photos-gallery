@@ -1,8 +1,9 @@
 <?php
-/** * FORCEKES - gallery.php (Final Custom Modal - MAX DESKTOP SIZE) */
+/** * FORCEKES - gallery.php (Custom Modal v3.0 - Full Viewport Control) */
 require_once 'config.php';
 
 $pageSlug = $_GET['page'] ?? 'museum';
+// Sorteren op de echte opnamedatum uit de EXIF/Metadata
 $photos = supabaseRequest("album_photos?category=eq.$pageSlug&select=*&order=captured_at.desc", 'GET');
 $displayName = ucfirst(htmlspecialchars($pageSlug));
 ?>
@@ -18,76 +19,78 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
         
         body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #000; color: #fff; overflow-x: hidden; }
 
-        /* Premium Modal v2.3 Styling - MAX SIZE DESKTOP */
-        #forcekes-modal.hidden { display: none; }
+        /* --- DE MODAL: HET VOLLEDIGE SCHERM --- */
         #forcekes-modal { 
-            position: fixed; inset: 0; z-index: 9999; 
-            display: flex; align-items: center; justify-content: center; 
+            position: fixed; 
+            inset: 0; 
+            z-index: 9999; 
+            display: none; /* Wordt 'flex' via JS */
+            align-items: center; 
+            justify-content: center; 
+            background-color: rgba(0, 0, 0, 0.98);
+            backdrop-filter: blur(20px);
+            user-select: none;
         }
-        #modal-overlay { position: absolute; inset: 0; background-color: rgba(0, 0, 0, 0.98); backdrop-filter: blur(20px); }
-        
-        /* FIX: Content container centraal en MAXIMAAL breed/hoog */
-        #modal-content { 
-            position: relative; z-index: 10000; 
-            width: 100%; height: 100%; 
-            display: flex; align-items: center; justify-content: center; 
-            pointer-events: none; 
-            /* FIX: Minimale padding voor maximale mediagroote op alle schermen */
-            padding: 10px; 
-        }
-        /* Consistent padding op desktop voor maximale grootte */
-        @media (min-width: 768px) { #modal-content { padding: 10px; } }
-        
-        /* FIX: Media maxi-size, gecentreerd en SCHERP */
+
+        /* --- DE MEDIA: VIEWPORT BASED SIZING --- */
         .modal-media { 
-            max-width: 100%; max-height: 100%; 
-            object-fit: contain; /* Behou aspect ratio, vul maximaal */
-            box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.8); 
-            pointer-events: auto; 
-            /* Zorgt voor scherpere weergave bij schalen */
+            display: block;
+            /* Dwing grootte af op basis van het scherm (Viewport) */
+            max-width: 95vw !important; 
+            max-height: 88vh !important; 
+            width: auto !important;
+            height: auto !important;
+            object-fit: contain;
+            box-shadow: 0 0 100px rgba(0, 0, 0, 0.8);
             image-rendering: -webkit-optimize-contrast;
-            image-rendering: crisp-edges;
-            /* Helpt bij scherp renderen van overgangen */
-            will-change: transform;
+            pointer-events: auto;
         }
         .modal-media.hidden { display: none !important; }
 
-        /* Modal Controls - Forceer zichtbaarheid en grootte */
-        .modal-btn { position: absolute; z-index: 10010; color: #3b82f6; cursor: pointer; background: rgba(0,0,0,0.5); border: none; padding: 10px; opacity: 0.8; transition: opacity 0.2s; border-radius: 99px; }
-        .modal-btn:hover { opacity: 1; background: rgba(0,0,0,0.8); }
-        #modal-close { top: 20px; right: 20px; font-size: 2.5rem; font-weight: 300; line-height: 1; padding: 10px 18px; }
-        #modal-prev { left: 20px; top: 50%; transform: translateY(-50%); font-size: 3rem; }
-        #modal-next { right: 20px; top: 50%; transform: translateY(-50%); font-size: 3rem; }
-        #modal-prev svg, #modal-next svg { width: 24px; height: 24px; }
-        
-        @media (min-width: 768px) {
-            #modal-close { font-size: 3.5rem; padding: 10px 22px; }
-            #modal-prev { font-size: 4rem; }
-            #modal-next { font-size: 4rem; }
-            #modal-prev svg, #modal-next svg { width: 32px; height: 32px; }
+        /* --- BEDIENING: GROOT & BLAUW --- */
+        .modal-btn { 
+            position: absolute; 
+            z-index: 10010; 
+            color: #3b82f6; 
+            background: rgba(0,0,0,0.5); 
+            border: none; 
+            cursor: pointer; 
+            border-radius: 99px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
+        .modal-btn:hover { background: #3b82f6; color: white; transform: scale(1.1); }
 
-        /* Download Knop Styling */
+        #modal-close { top: 25px; right: 25px; width: 60px; height: 60px; font-size: 3rem; font-weight: 200; }
+        #modal-prev { left: 20px; top: 50%; transform: translateY(-50%); width: 60px; height: 60px; }
+        #modal-next { right: 20px; top: 50%; transform: translateY(-50%); width: 60px; height: 60px; }
+
+        /* --- DOWNLOAD KNOP --- */
         #forcekes-download-btn {
-            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 10100;
-            background: #3b82f6; color: white; border-radius: 99px; padding: 14px 28px;
+            position: fixed; bottom: 30px; right: 30px; z-index: 10100;
+            background: #3b82f6; color: white; border-radius: 99px; padding: 16px 32px;
             font-size: 11px; font-weight: 900; text-transform: uppercase; display: none;
-            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.5); text-decoration: none;
-            letter-spacing: 1px; cursor: pointer; border: none;
+            box-shadow: 0 10px 40px rgba(59, 130, 246, 0.6); border: none; letter-spacing: 2px;
+            cursor: pointer;
         }
-        @media (min-width: 768px) { #forcekes-download-btn { bottom: 40px; right: 40px; left: auto; transform: none; } }
+        @media (max-width: 768px) {
+            #modal-prev, #modal-next { width: 50px; height: 50px; background: rgba(0,0,0,0.7); }
+            #forcekes-download-btn { left: 50%; right: auto; transform: translateX(-50%); width: 80%; text-align: center; }
+        }
     </style>
 </head>
-<body class="bg-black text-white min-h-screen">
+<body class="bg-black">
     <?php include 'menu.php'; ?>
 
-    <main class="max-w-7xl mx-auto px-6 py-8 md:py-20 mt-20 md:mt-24">
+    <main class="max-w-7xl mx-auto px-6 py-8 md:py-20 mt-20">
         <header class="mb-10 md:mb-16">
-            <h1 class="text-3xl sm:text-4xl md:text-6xl font-black italic uppercase tracking-tighter leading-none"><?= $displayName ?></h1>
+            <h1 class="text-3xl md:text-6xl font-black italic uppercase tracking-tighter leading-none"><?= $displayName ?></h1>
             <div class="h-1 md:h-2 w-16 md:w-24 bg-blue-600 mt-4 rounded-full"></div>
         </header>
 
-        <div class="gallery grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8 gallery-wrapper">
+        <div class="gallery grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
             <?php if (is_array($photos) && !empty($photos)): ?>
                 <?php foreach ($photos as $index => $p): 
                     $isVid = (strpos($p['image_url'], '.webm') !== false);
@@ -101,7 +104,7 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
                                     <div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center pl-1"><svg fill="white" viewBox="0 0 24 24" class="w-6 h-6"><path d="M8 5v14l11-7z"/></svg></div>
                                 </div>
                             <?php else: ?>
-                                <img src="<?= $url ?>" class="w-full h-full object-cover group-hover:scale-110 transition duration-1000" loading="lazy">
+                                <img src="<?= $url ?>" class="w-full h-full object-cover group-hover:scale-110 transition duration-700" loading="lazy">
                             <?php endif; ?>
                         </div>
                     </a>
@@ -110,15 +113,19 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
         </div>
     </main>
 
-    <div id="forcekes-modal" class="hidden">
-        <div id="modal-overlay"></div>
-        <div id="modal-content">
-            <img id="modal-img" class="modal-media hidden" src="" alt="">
-            <video id="modal-video" class="modal-media hidden" controls autoplay loop playsinline></video>
-        </div> 
-        <button id="modal-close" class="modal-btn" aria-label="Sluiten">&times;</button>
-        <button id="modal-prev" class="modal-btn" aria-label="Vorige"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg></button>
-        <button id="modal-next" class="modal-btn" aria-label="Volgende"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg></button>
+    <div id="forcekes-modal">
+        <button id="modal-close" class="modal-btn">&times;</button>
+        
+        <button id="modal-prev" class="modal-btn">
+            <svg width="30" height="30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+        </button>
+        
+        <img id="modal-img" class="modal-media hidden">
+        <video id="modal-video" class="modal-media hidden" controls autoplay loop playsinline></video>
+
+        <button id="modal-next" class="modal-btn">
+            <svg width="30" height="30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </button>
     </div>
 
     <button id="forcekes-download-btn">Media Opslaan</button>
@@ -128,10 +135,6 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
             const modal = document.getElementById('forcekes-modal');
             const modalImg = document.getElementById('modal-img');
             const modalVideo = document.getElementById('modal-video');
-            const modalClose = document.getElementById('modal-close');
-            const modalPrev = document.getElementById('modal-prev');
-            const modalNext = document.getElementById('modal-next');
-            const modalOverlay = document.getElementById('modal-overlay');
             const downloadBtn = document.getElementById('forcekes-download-btn');
             const galleryItems = document.querySelectorAll('.gallery-item');
 
@@ -157,33 +160,22 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
                     modalImg.classList.remove('hidden');
                 }
 
+                modal.style.display = 'flex';
                 downloadBtn.style.display = 'block';
-                modal.classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
             }
 
             function closeModal() {
-                modal.classList.add('hidden');
+                modal.style.display = 'none';
                 modalVideo.pause();
                 modalVideo.src = "";
-                modalImg.src = "";
                 downloadBtn.style.display = 'none';
-                document.body.style.overflow = '';
+                document.body.style.overflow = 'auto';
             }
 
-            function showPrev() {
-                currentIndex = (currentIndex - 1 + galleryItems.length) % galleryItems.length;
+            function navigate(direction) {
+                currentIndex = (currentIndex + direction + galleryItems.length) % galleryItems.length;
                 openModal(currentIndex);
-            }
-
-            function showNext() {
-                currentIndex = (currentIndex + 1) % galleryItems.length;
-                openModal(currentIndex);
-            }
-
-            function startDownload() {
-                if (!currentMediaUrl) return;
-                window.location.href = 'download.php?file=' + encodeURIComponent(currentMediaUrl);
             }
 
             galleryItems.forEach((item, index) => {
@@ -193,18 +185,25 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
                 });
             });
 
-            modalClose.addEventListener('click', closeModal);
-            modalPrev.addEventListener('click', showPrev);
-            modalNext.addEventListener('click', showNext);
-            modalOverlay.addEventListener('click', closeModal);
-            downloadBtn.addEventListener('click', startDownload);
+            document.getElementById('modal-close').onclick = closeModal;
+            document.getElementById('modal-prev').onclick = () => navigate(-1);
+            document.getElementById('modal-next').onclick = () => navigate(1);
+            document.getElementById('forcekes-download-btn').onclick = () => {
+                window.location.href = 'download.php?file=' + encodeURIComponent(currentMediaUrl);
+            };
 
+            // Keyboard support
             document.addEventListener('keydown', (e) => {
-                if (modal.classList.contains('hidden')) return;
+                if (modal.style.display !== 'flex') return;
                 if (e.key === 'Escape') closeModal();
-                if (e.key === 'ArrowLeft') showPrev();
-                if (e.key === 'ArrowRight') showNext();
+                if (e.key === 'ArrowLeft') navigate(-1);
+                if (e.key === 'ArrowRight') navigate(1);
             });
+
+            // Sluiten bij klik op achtergrond (niet op de foto zelf)
+            modal.onclick = (e) => {
+                if (e.target === modal) closeModal();
+            };
         });
     </script>
 </body>
