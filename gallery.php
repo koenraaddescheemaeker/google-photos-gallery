@@ -1,9 +1,8 @@
 <?php
-/** * FORCEKES - gallery.php (Custom Modal v3.0 - Full Viewport Control) */
+/** * FORCEKES - gallery.php (Custom Modal v3.1 - Force-to-Fit) */
 require_once 'config.php';
 
 $pageSlug = $_GET['page'] ?? 'museum';
-// Sorteren op de echte opnamedatum uit de EXIF/Metadata
 $photos = supabaseRequest("album_photos?category=eq.$pageSlug&select=*&order=captured_at.desc", 'GET');
 $displayName = ucfirst(htmlspecialchars($pageSlug));
 ?>
@@ -19,40 +18,52 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
         
         body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #000; color: #fff; overflow-x: hidden; }
 
-        /* --- DE MODAL: HET VOLLEDIGE SCHERM --- */
+        /* --- DE MODAL --- */
         #forcekes-modal { 
             position: fixed; 
             inset: 0; 
             z-index: 9999; 
-            display: none; /* Wordt 'flex' via JS */
+            display: none; 
             align-items: center; 
             justify-content: center; 
             background-color: rgba(0, 0, 0, 0.98);
-            backdrop-filter: blur(20px);
+            backdrop-filter: blur(25px);
             user-select: none;
         }
 
-        /* --- DE MEDIA: VIEWPORT BASED SIZING --- */
+        /* --- DE KIJKDOOS (CONTAINER) --- */
+        #modal-content {
+            position: relative;
+            z-index: 10000;
+            /* We definiëren de maximale 'canvas' grootte */
+            width: 95vw;
+            height: 85vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        /* --- DE MEDIA: FORCE TO FILL --- */
         .modal-media { 
             display: block;
-            /* Dwing grootte af op basis van het scherm (Viewport) */
-            max-width: 95vw !important; 
-            max-height: 88vh !important; 
-            width: auto !important;
-            height: auto !important;
-            object-fit: contain;
-            box-shadow: 0 0 100px rgba(0, 0, 0, 0.8);
-            image-rendering: -webkit-optimize-contrast;
+            /* CRUCIALE FIX: We zetten breedte/hoogte op 100% van het canvas */
+            width: 100% !important; 
+            height: 100% !important; 
+            /* contain zorgt dat de foto niet vervormt, maar wel maximaal groeit */
+            object-fit: contain; 
             pointer-events: auto;
+            image-rendering: -webkit-optimize-contrast; /* Voor scherpte bij vergroten */
+            filter: drop-shadow(0 0 50px rgba(0,0,0,1));
         }
         .modal-media.hidden { display: none !important; }
 
-        /* --- BEDIENING: GROOT & BLAUW --- */
+        /* --- BEDIENING --- */
         .modal-btn { 
             position: absolute; 
             z-index: 10010; 
             color: #3b82f6; 
-            background: rgba(0,0,0,0.5); 
+            background: rgba(0,0,0,0.6); 
             border: none; 
             cursor: pointer; 
             border-radius: 99px;
@@ -60,6 +71,7 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
             display: flex;
             align-items: center;
             justify-content: center;
+            backdrop-filter: blur(5px);
         }
         .modal-btn:hover { background: #3b82f6; color: white; transform: scale(1.1); }
 
@@ -76,8 +88,8 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
             cursor: pointer;
         }
         @media (max-width: 768px) {
-            #modal-prev, #modal-next { width: 50px; height: 50px; background: rgba(0,0,0,0.7); }
             #forcekes-download-btn { left: 50%; right: auto; transform: translateX(-50%); width: 80%; text-align: center; }
+            #modal-prev, #modal-next { background: rgba(0,0,0,0.8); width: 45px; height: 45px; }
         }
     </style>
 </head>
@@ -120,8 +132,10 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
             <svg width="30" height="30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
         </button>
         
-        <img id="modal-img" class="modal-media hidden">
-        <video id="modal-video" class="modal-media hidden" controls autoplay loop playsinline></video>
+        <div id="modal-content">
+            <img id="modal-img" class="modal-media hidden">
+            <video id="modal-video" class="modal-media hidden" controls autoplay loop playsinline></video>
+        </div>
 
         <button id="modal-next" class="modal-btn">
             <svg width="30" height="30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
@@ -186,13 +200,13 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
             });
 
             document.getElementById('modal-close').onclick = closeModal;
-            document.getElementById('modal-prev').onclick = () => navigate(-1);
-            document.getElementById('modal-next').onclick = () => navigate(1);
+            document.getElementById('modal-prev').onclick = (e) => { e.stopPropagation(); navigate(-1); };
+            document.getElementById('modal-next').onclick = (e) => { e.stopPropagation(); navigate(1); };
+            
             document.getElementById('forcekes-download-btn').onclick = () => {
                 window.location.href = 'download.php?file=' + encodeURIComponent(currentMediaUrl);
             };
 
-            // Keyboard support
             document.addEventListener('keydown', (e) => {
                 if (modal.style.display !== 'flex') return;
                 if (e.key === 'Escape') closeModal();
@@ -200,9 +214,8 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
                 if (e.key === 'ArrowRight') navigate(1);
             });
 
-            // Sluiten bij klik op achtergrond (niet op de foto zelf)
             modal.onclick = (e) => {
-                if (e.target === modal) closeModal();
+                if (e.target === modal || e.target.id === 'modal-content') closeModal();
             };
         });
     </script>
