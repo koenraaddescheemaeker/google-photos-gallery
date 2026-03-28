@@ -62,18 +62,59 @@ $displayName = ucfirst(htmlspecialchars($pageSlug));
         </div>
     </main>
     <a href="#" id="forcekes-download" download>Download Media</a>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplelightbox/2.14.0/simple-lightbox.vanilla.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var lightbox = new SimpleLightbox('.gallery a', { loop: true, nav: true, close: true, counter: true, swipeClose: true, history: false, videoRegex: /\.webm/i });
+<script data-cfasync="false" src="https://cdnjs.cloudflare.com/ajax/libs/simplelightbox/2.14.0/simple-lightbox.min.js"></script>
+
+<script data-cfasync="false">
+    // Functie om de lightbox te initialiseren
+    function initForcekesLightbox() {
+        if (typeof SimpleLightbox !== 'undefined') {
+            var lightbox = new SimpleLightbox('.gallery a', {
+                loop: true,
+                nav: true,
+                close: true,
+                counter: true,
+                swipeClose: true,
+                history: false,
+                fileExt: 'webp|jpg|jpeg|png|gif|webm',
+                animationSpeed: 200,
+                uniqueImages: true,
+                videoRegex: /\.webm/i
+            });
+
             const btn = document.getElementById('forcekes-download');
-            const updateLink = () => {
-                setTimeout(() => { const active = document.querySelector('.sl-image img, .sl-image video'); if (active) btn.href = active.src; }, 150);
-            };
-            lightbox.on('shown.simplelightbox', () => { updateLink(); btn.style.display = 'block'; });
-            lightbox.on('changed.simplelightbox', updateLink);
-            lightbox.on('close.simplelightbox', () => btn.style.display = 'none');
-        });
-    </script>
+            
+            lightbox.on('shown.simplelightbox', function() {
+                const activeMedia = document.querySelector('.sl-image img, .sl-image video');
+                if (activeMedia) {
+                    btn.href = activeMedia.src;
+                    btn.style.display = 'block';
+                }
+            });
+
+            lightbox.on('changed.simplelightbox', function() {
+                setTimeout(() => {
+                    const activeMedia = document.querySelector('.sl-image img, .sl-image video');
+                    if (activeMedia) btn.href = activeMedia.src;
+                }, 150);
+            });
+
+            lightbox.on('close.simplelightbox', function() {
+                btn.style.display = 'none';
+            });
+            
+            console.log("🚀 Lightbox Ready (Cloudflare Bypass Active)");
+        } else {
+            // Als de library nog niet geladen is, probeer het over 100ms opnieuw
+            setTimeout(initForcekesLightbox, 100);
+        }
+    }
+
+    // Start de check zodra de pagina begint te laden
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        initForcekesLightbox();
+    } else {
+        document.addEventListener('DOMContentLoaded', initForcekesLightbox);
+    }
+</script>
 </body>
 </html>
