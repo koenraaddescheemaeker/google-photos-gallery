@@ -1,42 +1,50 @@
 <?php
-/** * FORCEKES - sync-media.php (Deep Scan Edition) */
+/** * FORCEKES - sync-media.php (Bucket Migrator v3) */
 require_once 'config.php';
 set_time_limit(0); 
 
-echo "<h2>BUCKET <span style='color:#3b82f6;'>DEEP SYNC</span></h2>";
+echo "<h2>BUCKET <span style='color:#3b82f6;'>MIGRATOR</span></h2>";
 
-// 1. Haal ALLE items op uit de database (geen filters in de URL om fouten te voorkomen)
-$allItems = supabaseRequest("album_photos?select=*", 'GET');
+// 1. Haal de data op
+$res = supabaseRequest("album_photos?select=*", 'GET');
 
-if (!is_array($allItems)) {
-    die("<p style='color:red;'>FOUT: Kon de database niet bereiken.</p>");
+if ($res === null) {
+    die("<p style='color:red;'>FOUT: De database gaf GEEN antwoord (null). Controleer je API keys.</p>");
 }
 
-// 2. Filter in PHP op Google links
+if (isset($res['error'])) {
+    die("<p style='color:red;'>FOUT: Database gaf een error: " . ($res['message'] ?? 'Onbekend') . "</p>");
+}
+
 $toSync = [];
-foreach ($allItems as $item) {
-    if (strpos($item['image_url'], 'googleusercontent') !== false || strpos($item['image_url'], 'google') !== false) {
+$alreadyInBucket = 0;
+
+foreach ($res as $item) {
+    $url = $item['image_url'] ?? '';
+    // Als de URL NIET ons eigen Supabase domein bevat, moet hij gesynct worden
+    if (!empty($url) && strpos($url, 'supabase.co') === false) {
         $toSync[] = $item;
+    } else {
+        $alreadyInBucket++;
     }
 }
 
-$total = count($toSync);
-echo "<p>Systeem heeft <strong>$total</strong> items gevonden die nog op Google staan.</p><hr>";
+echo "<p>Database status: <strong>$alreadyInBucket</strong> items in bucket, <strong>" . count($toSync) . "</strong> items te verwerken.</p><hr>";
 
-if ($total === 0) {
-    echo "<p style='color:green; font-weight:bold;'>✓ Alles staat al veilig in de Supabase Bucket!</p>";
+if (empty($toSync)) {
+    echo "<p style='color:green;'>✓ Alles is al overgezet naar de Supabase Bucket!</p>";
     exit;
 }
 
 foreach ($toSync as $item) {
     $id = $item['id'];
-    $category = !empty($item['category']) ? (string)$item['category'] : 'ongecategoriseerd';
-    $googleUrl = $item['image_url'];
+    $category = trim($item['category'] ?? 'ongecategoriseerd');
+    $externalUrl = $item['image_url'];
 
     echo "Verwerken: <span style='color:#3b82f6;'>$category</span> / " . substr($id, 0, 8) . "... ";
 
-    // Download met User-Agent
-    $ch = curl_init($googleUrl);
+    // Downloaden met User-Agent
+    $ch = curl_init($externalUrl);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36');
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
@@ -45,13 +53,13 @@ foreach ($toSync as $item) {
     curl_close($ch);
 
     if (!$binaryData) {
-        echo "<span style='color:red;'>Download van Google mislukt.</span><br>";
+        echo "<span style='color:red;'>Download mislukt.</span><br>";
         continue;
     }
 
-    // Bestandstype en pad bepalen
+    // Bestandstype en pad
     $ext = (strpos($mimeType, 'video') !== false) ? '.mp4' : '.jpg';
-    $storagePath = trim($category) . '/' . $id . $ext;
+    $storagePath = $category . '/' . $id . $ext;
 
     // Upload naar Bucket
     $uploadUrl = SUPABASE_URL . '/storage/v1/object/familie-media/' . rawurlencode($storagePath);
@@ -65,20 +73,17 @@ foreach ($toSync as $item) {
         'Content-Type: ' . $mimeType,
         'x-upsert: true'
     ]);
-    $res = curl_exec($ch);
+    $uploadRes = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
     if ($httpCode === 200 || $httpCode === 201) {
-        // Update database met de nieuwe publieke link
+        // Update database met de nieuwe publieke bucket-URL
         $newUrl = SUPABASE_URL . '/storage/v1/object/public/familie-media/' . str_replace(' ', '%20', $storagePath);
         supabaseRequest("album_photos?id=eq.$id", "PATCH", ['image_url' => $newUrl]);
-        echo "<span style='color:green;'>Overgezet!</span><br>";
+        echo "<span style='color:green;'>Succesvol overgezet naar bucket.</span><br>";
     } else {
-        echo "<span style='color:red;'>Upload naar bucket mislukt (Code $httpCode)</span><br>";
+        echo "<span style='color:red;'>Upload fout (Code $httpCode)</span><br>";
     }
-
-    usleep(50000); 
 }
-
-echo "<h3>Sync voltooid. Ververs de pagina.</h3>";
+echo "<h3>Sync voltooid.</h3>";
