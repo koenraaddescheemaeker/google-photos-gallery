@@ -1,61 +1,113 @@
 <?php
 /**
  * FORCEKES - sync-media.php
- * Verwerkt en synchroniseert media-items tussen de bron en Supabase.
- * Geoptimaliseerd voor PHP 8.1+ (geen rtrim null warnings).
+ * Synchroniseert media-bestanden van externe bronnen naar de Supabase Storage Bucket.
+ * Zo creëren we de mappen joris, museum, feest 2025, etc.
  */
-
 require_once 'config.php';
 
-// Zorg voor een schone, premium output in de logs
+// Zorg voor een schone output in de logs
 echo "<style>
-    body { background: #000; font-family: 'Inter', sans-serif; color: #555; font-size: 12px; line-height: 1.6; padding: 20px; }
-    .log-entry { margin-bottom: 5px; border-left: 2px solid #222; padding-left: 15px; }
-    .status-ok { color: #3b82f6; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
-    .timestamp { color: #222; margin-right: 10px; }
+    body { background: #000; font-family: 'Inter', sans-serif; color: #fff; font-size: 11px; line-height: 1.6; padding: 30px; }
+    h2 { font-weight: 900; text-transform: uppercase; color: #fff; margin-bottom: 30px; }
+    .log-category { font-weight: 700; color: #3b82f6; margin-top: 20px; text-transform: uppercase; letter-spacing: 1px; }
+    .log-entry { margin-left: 20px; border-left: 1px solid #222; padding-left: 15px; margin-bottom: 3px; color: #ccc; }
+    .status-ok { color: #fff; font-weight: bold; }
+    .status-new { color: #00ff00; font-weight: bold; }
 </style>";
 
-// 1. Haal alle items op die verwerkt moeten worden
-// We halen alles op uit de tabel om de URLs en metadata te valideren/schoonmaken
-$items = supabaseRequest("album_photos?select=*", 'GET');
+echo "<h2>MEDIA <span style='color:#3b82f6;'>SYNC JOB</span></h2>";
 
-if (!is_array($items)) {
-    die("<span style='color:red;'>FOUT: Kon geen data ophalen uit Supabase.</span>");
+// 1. Haal alle unieke categorieën op uit de database
+$categoryRequest = supabaseRequest("album_photos?select=category", 'GET');
+$uniqueCategories = [];
+if (is_array($categoryRequest)) {
+    // Haal alle unieke categorieën eruit en sorteer ze
+    $rawCategories = array_unique(array_column($categoryRequest, 'category'));
+    foreach ($rawCategories as $cat) {
+        if (!empty($cat)) {
+            $uniqueCategories[] = (string)$cat;
+        }
+    }
 }
 
-echo "<h2>SYNC <span style='color:#fff;'>PROCESS</span></h2>";
+echo "<div>Systeem heeft <span class='status-new'>" . count($uniqueCategories) . " categorieën</span> gevonden.</div>";
 
-foreach ($items as $item) {
-    // --- DE FIX VOOR PHP 8.1 WAARSCHUWINGEN ---
-    // We casten elke variabele naar (string) voordat we rtrim() gebruiken.
-    // Zelfs als een waarde NULL is in de database, wordt het nu een lege string "".
-    
-    $id        = (string)($item['id'] ?? '');
-    $imageUrl  = (string)($item['image_url'] ?? '');
-    $category  = (string)($item['category'] ?? '');
-    
-    // Regel 121 & 130 fix: rtrim veilig aanroepen
-    $cleanUrl  = rtrim($imageUrl, '/ ');
-    $cleanId   = rtrim($id, ' ');
+// Een array om de public URL van Supabase Storage te bouwen
+$supabasePublicUrlPrefix = SUPABASE_URL . '/storage/v1/object/public/familie-media/';
 
-    // Logica: Alleen updaten als er daadwerkelijk iets schoongemaakt is
-    if ($cleanUrl !== $imageUrl) {
-        $updatePayload = [
-            'image_url' => $cleanUrl
-        ];
-        supabaseRequest("album_photos?id=eq." . $id, "PATCH", $updatePayload);
+foreach ($uniqueCategories as $category) {
+    echo "<div class='log-category'>Categorie: " . ucfirst($category) . "</div>";
+
+    // 2. Haal alle database entries op voor deze categorie die nog naar Google verwijzen
+    // We zoeken naar image_url die googleusercontent bevat
+    $googleItems = supabaseRequest("album_photos?category=eq." . rawurlencode($category) . "&image_url=like.*googleusercontent*", 'GET');
+
+    if (is_array($googleItems) && !empty($googleItems)) {
+        echo "<div class='log-entry'><span style='color:#3b82f6; font-weight:bold;'>" . count($googleItems) . " items</span> te verplaatsen naar Supabase Storage.</div>";
+
+        foreach ($googleItems as $item) {
+            $id = (string)($item['id'] ?? '');
+            $googleUrl = (string)($item['image_url'] ?? '');
+
+            // 3. Download het bestand van Google
+            $tempFile = 'temp_' . $id;
+            file_put_contents($tempFile, file_get_contents($googleUrl));
+            
+            // 4. Bepaal MIME type en extensie
+            $mimeType = mime_content_type($tempFile);
+            $extension = ($mimeType === 'image/jpeg') ? '.jpg' : (($mimeType === 'image/png') ? '.png' : (($mimeType === 'video/mp4') ? '.mp4' : ''));
+            if (empty($extension)) {
+                echo "<div class='log-entry' style='color:red;'>FOUT: Onbekend bestandstype voor ID " . substr($id, 0, 8) . ".</div>";
+                unlink($tempFile);
+                continue;
+            }
+
+            // 5. Upload naar Supabase Storage bucket: familie-media/[category]/[id][extension]
+            // We gebruiken cURL direct voor de storage upload
+            // We coderen de categorie om spaties te handhaven
+            $encodedCategory = rawurlencode($category);
+            $storageObjectPath = $encodedCategory . '/' . $id . $extension;
+            $uploadUrl = SUPABASE_URL . '/storage/v1/object/familie-media/' . $storageObjectPath;
+
+            $ch = curl_init($uploadUrl);
+            $cfile = new CURLFile($tempFile, $mimeType, $id . $extension);
+            $data = array('file' => $cfile);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
+                // cURL handles multipart/form-data
+            ]);
+            $uploadRes = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 200 || $httpCode === 201) {
+                // 6. Update database entry met de nieuwe Supabase URL
+                $newSupabaseUrl = $supabasePublicUrlPrefix . $storageObjectPath;
+                $updatePayload = ['image_url' => $newSupabaseUrl];
+                supabaseRequest("album_photos?id=eq." . $id, "PATCH", $updatePayload);
+                
+                echo "<div class='log-entry'>";
+                echo "<span class='timestamp'>" . date('H:i:s') . "</span>";
+                echo "<span class='status-new'>📸 Bestand verplaatst:</span> ";
+                echo "<span style='color:#222;'>| ID: " . substr($id, 0, 8) . "... naar familie-media/" . $category . "</span>";
+                echo "</div>";
+            } else {
+                 echo "<div class='log-entry' style='color:red;'>FOUT bij uploaden naar Storage. HTTP Code: " . $httpCode . ".</div>";
+            }
+
+            // 7. Ruim op
+            unlink($tempFile);
+
+            // Voorkom server overload
+            usleep(50000); 
+        }
+    } else {
+        echo "<div class='log-entry'>Alles staat al in de bucket of geen items te verplaatsen.</div>";
     }
-
-    // De output die je in je logs zag, nu zonder de 'Deprecated' regels
-    echo "<div class='log-entry'>";
-    echo "<span class='timestamp'>" . date('H:i:s') . "</span>";
-    echo "<span class='status-ok'>📸 Afbeelding verwerkt:</span> ";
-    echo "<span style='color:#eee;'>" . date('Y-m-d H:i:s') . "</span>";
-    echo " <span style='color:#222;'>| ID: " . substr($id, 0, 8) . "...</span>";
-    echo "</div>";
-
-    // Voorkom server overload bij grote hoeveelheden data
-    usleep(50000); 
 }
 
 echo "<br><br><span class='status-ok'>✓ Synchronisatie voltooid.</span>";
