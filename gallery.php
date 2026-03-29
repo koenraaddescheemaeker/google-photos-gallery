@@ -1,15 +1,15 @@
 <?php
 /**
- * FORCEKES - gallery.php (Final Premium Version)
- * Bevat de volledige grid-logica en de interactieve lightbox.
+ * FORCEKES - gallery.php (Blue Navigation Edition)
+ * Volledig herzien met blauwe actieknoppen en verbeterde lightbox-positionering.
  */
 require_once 'config.php';
 
-// 1. Categorie bepalen en beveiligen
+// 1. Categorie bepalen
 $pageSlug = isset($_GET['page']) ? $_GET['page'] : 'museum';
 $encodedSlug = rawurlencode($pageSlug);
 
-// 2. Naamgeving bepalen (voorkomt de 'Undefined variable' error)
+// 2. Naamgeving (voorkomt errors)
 if (strtolower($pageSlug) === 'joris') {
     $displayName = 'Joris';
 } elseif (strtolower($pageSlug) === 'museum') {
@@ -18,13 +18,9 @@ if (strtolower($pageSlug) === 'joris') {
     $displayName = ucfirst(htmlspecialchars($pageSlug));
 }
 
-// 3. Foto's ophalen uit Supabase
+// 3. Data ophalen
 $photos = supabaseRequest("album_photos?category=eq.$encodedSlug&select=*&order=captured_at.desc", 'GET');
-
-$hasError = false;
-if ($photos === null || (isset($photos['error']) && $photos['error'] === true)) {
-    $hasError = true;
-}
+$hasError = ($photos === null || (isset($photos['error']) && $photos['error'] === true));
 ?>
 <!DOCTYPE html>
 <html lang="nl">
@@ -38,6 +34,12 @@ if ($photos === null || (isset($photos['error']) && $photos['error'] === true)) 
         body { background-color: #000; color: #fff; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
         .glass { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); }
         #forcekes-modal.active { display: flex; opacity: 1; }
+        
+        /* Custom scrollbar voor premium gevoel */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #222; }
     </style>
 </head>
 <body class="bg-black">
@@ -51,7 +53,7 @@ if ($photos === null || (isset($photos['error']) && $photos['error'] === true)) 
 
         <?php if ($hasError): ?>
             <div class="py-20 text-center glass rounded-[3rem] border border-red-900/20">
-                <p class="text-red-500 font-bold uppercase tracking-widest text-xs">Databaseverbinding mislukt</p>
+                <p class="text-red-500 font-bold uppercase tracking-widest text-xs">Systeem tijdelijk offline</p>
             </div>
         <?php else: ?>
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -73,7 +75,7 @@ if ($photos === null || (isset($photos['error']) && $photos['error'] === true)) 
                     <?php endforeach; ?>
                 <?php else: ?>
                     <div class="col-span-full py-20 text-center border border-dashed border-white/10 rounded-[3rem]">
-                        <p class="text-zinc-600 text-xs uppercase tracking-widest">Dit album is nog leeg</p>
+                        <p class="text-zinc-600 text-xs uppercase tracking-widest italic">Nog geen herinneringen in dit album</p>
                     </div>
                 <?php endif; ?>
             </div>
@@ -83,27 +85,34 @@ if ($photos === null || (isset($photos['error']) && $photos['error'] === true)) 
     <div id="forcekes-modal" class="fixed inset-0 z-[9999] bg-black hidden flex-col items-center justify-center opacity-0 transition-all duration-300">
         
         <div class="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-[10001]">
-            <button id="modal-close" class="flex items-center space-x-3 bg-white/5 hover:bg-white/10 backdrop-blur-xl border border-white/10 px-6 py-3 rounded-full transition-all group">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-zinc-400 group-hover:text-white transition">
+            <button id="modal-close" class="flex items-center space-x-3 bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-full transition-all shadow-xl shadow-blue-600/20 group">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" class="transition group-hover:-translate-x-1">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
-                <span class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 group-hover:text-white">Sluiten</span>
+                <span class="text-[10px] font-black uppercase tracking-[0.2em] text-white">Sluiten</span>
+            </button>
+
+            <button id="forcekes-download-btn" class="flex items-center space-x-3 bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-full transition-all shadow-xl shadow-blue-600/20 group">
+                <span class="text-[10px] font-black uppercase tracking-[0.2em] text-white">Downloaden</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" class="transition group-hover:translate-y-1">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                </svg>
             </button>
         </div>
 
-        <button id="modal-prev" class="absolute left-6 top-1/2 -translate-y-1/2 z-[10001] p-5 bg-black/20 hover:bg-blue-600 rounded-full border border-white/5 transition-all text-white">
+        <button id="modal-prev" class="absolute left-6 top-1/2 -translate-y-1/2 z-[10001] p-5 bg-black/40 hover:bg-blue-600 rounded-full border border-white/5 transition-all text-white backdrop-blur-md">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
-        <button id="modal-next" class="absolute right-6 top-1/2 -translate-y-1/2 z-[10001] p-5 bg-black/20 hover:bg-blue-600 rounded-full border border-white/5 transition-all text-white">
+        <button id="modal-next" class="absolute right-6 top-1/2 -translate-y-1/2 z-[10001] p-5 bg-black/40 hover:bg-blue-600 rounded-full border border-white/5 transition-all text-white backdrop-blur-md">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 18l6-6-6-6"/></svg>
         </button>
 
         <div id="modal-content" class="w-full h-full flex items-center justify-center p-4 md:p-24 pointer-events-none">
-            <img id="modal-img" class="max-w-full max-h-full object-contain hidden pointer-events-auto">
+            <img id="modal-img" class="max-w-full max-h-full object-contain hidden pointer-events-auto rounded-sm shadow-2xl">
             <video id="modal-video" class="max-w-full max-h-full hidden pointer-events-auto" controls autoplay loop playsinline></video>
         </div>
 
-        <div class="absolute bottom-10 left-0 right-0 text-center">
+        <div class="absolute bottom-10 left-0 right-0 text-center pointer-events-none">
             <p class="text-[9px] font-black uppercase tracking-[0.4em] text-zinc-600">
                 <?= $displayName ?> &middot; <span id="modal-counter" class="text-zinc-400">0 / 0</span>
             </p>
@@ -168,6 +177,19 @@ if ($photos === null || (isset($photos['error']) && $photos['error'] === true)) 
         document.getElementById('modal-prev').onclick = (e) => { e.stopPropagation(); navigate(-1); };
         document.getElementById('modal-next').onclick = (e) => { e.stopPropagation(); navigate(1); };
         
+        // Download actie
+        document.getElementById('forcekes-download-btn').onclick = (e) => {
+            e.stopPropagation();
+            const url = galleryItems[currentIndex].href;
+            // Forceer download door een tijdelijke link te maken
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'forcekes-memory-' + currentIndex + '.jpg';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        };
+
         document.addEventListener('keydown', (e) => {
             if (modal.classList.contains('hidden')) return;
             if (e.key === 'Escape') closeModal();
