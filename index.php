@@ -1,26 +1,32 @@
 <?php
-/** * FORCEKES - index.php (Compact Edition) */
+/** * FORCEKES - index.php (Compact Edition with Counts & Random Cover) */
 require_once 'config.php';
 
-$allMedia = supabaseRequest("album_photos?select=category,image_url", 'GET');
+// 1. Haal unieke categorieën met foto-aantallen op uit de database
+// We gebruiken de RPC-functie voor efficiëntie
+$categoriesData = supabaseRequest("rpc/get_unique_categories_with_counts", 'GET');
 $albumGrid = [];
 
-if (is_array($allMedia)) {
-    $tempGrouped = [];
-    foreach ($allMedia as $item) {
-        $cat = $item['category'];
-        if ($cat === 'zwaaikamer') continue;
-        $tempGrouped[$cat][] = $item['image_url'];
-    }
+if (is_array($categoriesData)) {
+    foreach ($categoriesData as $album) {
+        $cat = (string)($album['category'] ?? '');
+        if ($cat === 'zwaaikamer' || empty($cat)) continue; // Sla zwaaikamer en leeg over
+        
+        // 2. Haal één willekeurige cover foto op uit de database voor deze categorie
+        // We zoeken naar een Supabase URL om te tonen in de tegel
+        // We sorteren op random() en pakken 1 item
+        $coverPhotoRequest = supabaseRequest("album_photos?category=eq." . rawurlencode($cat) . "&order=random()&limit=1&select=image_url", 'GET');
+        $randomImg = (is_array($coverPhotoRequest) && !empty($coverPhotoRequest)) ? $coverPhotoRequest[0]['image_url'] : '';
 
-    foreach ($tempGrouped as $cat => $images) {
         $albumGrid[] = [
             'slug' => $cat,
             'name' => ($cat === 'museum') ? 'Het Museum' : ucfirst($cat),
-            'random_img' => $images[array_rand($images)]
+            'photo_count' => (int)($album['photo_count'] ?? 0),
+            'random_img' => $randomImg
         ];
     }
     
+    // Sorteer de albums alfabetisch
     usort($albumGrid, function($a, $b) {
         return strcmp($a['name'], $b['name']);
     });
@@ -35,9 +41,11 @@ if (is_array($allMedia)) {
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { background-color: #000; color: #fff; font-family: 'Inter', sans-serif; }
+        body { background-color: #000; color: #fff; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
         .zwaai-card { background: #050505; border: 1px solid rgba(59, 130, 246, 0.2); }
         .zwaai-card:hover { border-color: #3b82f6; box-shadow: 0 0 30px rgba(59, 130, 246, 0.1); }
+        img { filter: grayscale(100%) opacity(0.6); transition: filter 1s duration-700; loading: lazy; }
+        .group:hover img { filter: grayscale(0%) opacity(1) scale(1.1); }
     </style>
 </head>
 <body class="bg-black">
@@ -59,11 +67,12 @@ if (is_array($allMedia)) {
             </a>
 
             <?php foreach ($albumGrid as $album): ?>
-                <a href="gallery.php?page=<?= rawurlencode($album['slug']) ?>" class="group relative block aspect-square overflow-hidden rounded-[2rem] border border-white/5 bg-zinc-900 transition-all duration-700">
-                    <img src="<?= htmlspecialchars($album['random_img']) ?>" class="absolute inset-0 w-full h-full object-cover transition duration-1000 grayscale group-hover:grayscale-0 group-hover:scale-110" loading="lazy">
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-                    <div class="absolute bottom-5 left-5 right-5">
+                <a href="gallery.php?page=<?= rawurlencode((string)$album['slug']) ?>" class="group relative block aspect-square overflow-hidden rounded-[2rem] border border-white/5 bg-zinc-900 transition-all duration-700">
+                    <img src="<?= htmlspecialchars((string)$album['random_img']) ?>" class="absolute inset-0 w-full h-full object-cover grayscale group-hover:grayscale-0" loading="lazy">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent transition duration-500"></div>
+                    <div class="absolute bottom-5 left-5 right-5 text-center">
                         <h2 class="text-[10px] font-black uppercase tracking-widest text-white leading-tight truncate"><?= $album['name'] ?></h2>
+                        <span class="text-[9px] font-bold text-blue-500 uppercase tracking-widest mt-1 block"><?= $album['photo_count'] ?> foto's</span>
                     </div>
                 </a>
             <?php endforeach; ?>
@@ -71,8 +80,8 @@ if (is_array($allMedia)) {
         </div>
     </main>
 
-    <footer class="py-12 text-center">
-        <p class="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-800">Forcekes Portaal &middot; v2.6</p>
+    <footer class="py-12 text-center border-t border-white/5">
+        <p class="text-[8px] font-black uppercase tracking-[0.3em] text-zinc-800">Forcekes Portaal &middot; v2.7</p>
     </footer>
 </body>
 </html>
