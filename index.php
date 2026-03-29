@@ -1,15 +1,22 @@
 <?php
-/** * FORCEKES - index.php (Premium & Warning-Free) */
+/** * FORCEKES - index.php (Bulletproof Edition) */
 require_once 'config.php';
 
-// Haal alle data in één keer op via de RPC
+// Haal data op via RPC
 $dashboardData = supabaseRequest("rpc/get_album_dashboard", 'GET');
-$albumGrid = (is_array($dashboardData) && !isset($dashboardData['error'])) ? $dashboardData : [];
 
-// Sorteer alfabetisch op naam
-usort($albumGrid, function($a, $b) {
-    return strcmp((string)$a['category_name'], (string)$b['category_name']);
-});
+// Strenge controle op de data om warnings te voorkomen
+$albumGrid = [];
+if (is_array($dashboardData) && !isset($dashboardData['error']) && !isset($dashboardData['message'])) {
+    $albumGrid = $dashboardData;
+}
+
+// Sorteren
+if (!empty($albumGrid)) {
+    usort($albumGrid, function($a, $b) {
+        return strcmp((string)($a['category_name'] ?? ''), (string)($b['category_name'] ?? ''));
+    });
+}
 ?>
 <!DOCTYPE html>
 <html lang="nl">
@@ -23,9 +30,8 @@ usort($albumGrid, function($a, $b) {
         body { background-color: #000; color: #fff; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
         .zwaai-card { background: #050505; border: 1px solid rgba(59, 130, 246, 0.2); }
         .zwaai-card:hover { border-color: #3b82f6; box-shadow: 0 0 30px rgba(59, 130, 246, 0.1); }
-        img { transition: filter 0.8s, transform 0.8s; filter: grayscale(100%) opacity(0.4); }
+        img { transition: filter 0.8s, transform 0.8s; filter: grayscale(100%) opacity(0.5); }
         .group:hover img { filter: grayscale(0%) opacity(1); transform: scale(1.05); }
-        .album-title { text-shadow: 0 2px 10px rgba(0,0,0,0.8); }
     </style>
 </head>
 <body class="bg-black">
@@ -44,21 +50,22 @@ usort($albumGrid, function($a, $b) {
                 </div>
             </a>
 
-            <?php foreach ($albumGrid as $album): 
-                $slug = (string)$album['category_name'];
-                $count = (int)$album['photo_count'];
-                $cover = (string)$album['cover_url'];
-                $displayName = ($slug === 'museum') ? 'HET MUSEUM' : strtoupper($slug);
-            ?>
-                <a href="gallery.php?page=<?= rawurlencode($slug) ?>" class="group relative block aspect-square overflow-hidden rounded-[2rem] border border-white/5 bg-zinc-900 transition-all duration-700">
-                    <img src="<?= htmlspecialchars($cover) ?>" class="absolute inset-0 w-full h-full object-cover" loading="lazy">
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent"></div>
-                    <div class="absolute bottom-5 left-5 right-5 text-center">
-                        <h2 class="album-title text-[9px] font-black uppercase tracking-widest text-white leading-tight truncate"><?= $displayName ?></h2>
-                        <span class="text-[8px] font-bold text-blue-500 uppercase tracking-widest mt-1 block"><?= $count ?> FOTO'S</span>
-                    </div>
-                </a>
-            <?php endforeach; ?>
+            <?php if (!empty($albumGrid)): ?>
+                <?php foreach ($albumGrid as $album): 
+                    if (!isset($album['category_name'])) continue;
+                    $slug = (string)$album['category_name'];
+                    $name = ($slug === 'museum') ? 'HET MUSEUM' : strtoupper($slug);
+                ?>
+                    <a href="gallery.php?page=<?= rawurlencode($slug) ?>" class="group relative block aspect-square overflow-hidden rounded-[2rem] border border-white/5 bg-zinc-900 transition-all duration-700">
+                        <img src="<?= htmlspecialchars($album['cover_url'] ?? '') ?>" class="absolute inset-0 w-full h-full object-cover" loading="lazy">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent"></div>
+                        <div class="absolute bottom-5 left-5 right-5 text-center">
+                            <h2 class="text-[9px] font-black uppercase tracking-widest text-white leading-tight truncate"><?= $name ?></h2>
+                            <span class="text-[8px] font-bold text-blue-500 uppercase tracking-widest mt-1 block"><?= (int)($album['photo_count'] ?? 0) ?> FOTO'S</span>
+                        </div>
+                    </a>
+                <?php endforeach; ?>
+            <?php endif; ?>
 
         </div>
     </main>

@@ -1,25 +1,41 @@
 <?php
-/** * FORCEKES - sync-media.php (Robust Bucket Sync) */
+/** * FORCEKES - sync-media.php (Deep Scan Edition) */
 require_once 'config.php';
-set_time_limit(0); // Geen tijdslimiet voor grote syncs
+set_time_limit(0); 
 
-echo "<h2>BUCKET <span style='color:#3b82f6;'>SYNC</span></h2>";
+echo "<h2>BUCKET <span style='color:#3b82f6;'>DEEP SYNC</span></h2>";
 
-// 1. Zoek alle items die nog op Google staan
-$items = supabaseRequest("album_photos?image_url=like.*googleusercontent*&limit=50", 'GET');
+// 1. Haal ALLE items op uit de database (geen filters in de URL om fouten te voorkomen)
+$allItems = supabaseRequest("album_photos?select=*", 'GET');
 
-if (!is_array($items) || empty($items)) {
-    die("<p style='color:green;'>Alles is al overgezet naar de Supabase Bucket!</p>");
+if (!is_array($allItems)) {
+    die("<p style='color:red;'>FOUT: Kon de database niet bereiken.</p>");
 }
 
-foreach ($items as $item) {
+// 2. Filter in PHP op Google links
+$toSync = [];
+foreach ($allItems as $item) {
+    if (strpos($item['image_url'], 'googleusercontent') !== false || strpos($item['image_url'], 'google') !== false) {
+        $toSync[] = $item;
+    }
+}
+
+$total = count($toSync);
+echo "<p>Systeem heeft <strong>$total</strong> items gevonden die nog op Google staan.</p><hr>";
+
+if ($total === 0) {
+    echo "<p style='color:green; font-weight:bold;'>✓ Alles staat al veilig in de Supabase Bucket!</p>";
+    exit;
+}
+
+foreach ($toSync as $item) {
     $id = $item['id'];
-    $category = (string)$item['category'];
+    $category = !empty($item['category']) ? (string)$item['category'] : 'ongecategoriseerd';
     $googleUrl = $item['image_url'];
 
-    echo "Verwerken: $category / $id... ";
+    echo "Verwerken: <span style='color:#3b82f6;'>$category</span> / " . substr($id, 0, 8) . "... ";
 
-    // Download van Google met User-Agent (voorkomt 403 errors)
+    // Download met User-Agent
     $ch = curl_init($googleUrl);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36');
@@ -29,20 +45,19 @@ foreach ($items as $item) {
     curl_close($ch);
 
     if (!$binaryData) {
-        echo "<span style='color:red;'>Download mislukt</span><br>";
+        echo "<span style='color:red;'>Download van Google mislukt.</span><br>";
         continue;
     }
 
-    // Extensie bepalen
-    $ext = ($mimeType === 'video/mp4') ? '.mp4' : '.jpg';
-    // Mapnaam in bucket (spaties worden %20 in URL, maar we slaan ze op als tekst)
-    $storagePath = $category . '/' . $id . $ext;
+    // Bestandstype en pad bepalen
+    $ext = (strpos($mimeType, 'video') !== false) ? '.mp4' : '.jpg';
+    $storagePath = trim($category) . '/' . $id . $ext;
 
-    // Upload naar Supabase Storage (PUT methode is stabieler voor streams)
+    // Upload naar Bucket
     $uploadUrl = SUPABASE_URL . '/storage/v1/object/familie-media/' . rawurlencode($storagePath);
     
     $ch = curl_init($uploadUrl);
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST"); // PostgREST Storage gebruikt POST voor nieuwe files
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
     curl_setopt($ch, CURLOPT_POSTFIELDS, $binaryData);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -55,14 +70,15 @@ foreach ($items as $item) {
     curl_close($ch);
 
     if ($httpCode === 200 || $httpCode === 201) {
+        // Update database met de nieuwe publieke link
         $newUrl = SUPABASE_URL . '/storage/v1/object/public/familie-media/' . str_replace(' ', '%20', $storagePath);
         supabaseRequest("album_photos?id=eq.$id", "PATCH", ['image_url' => $newUrl]);
-        echo "<span style='color:cyan;'>Succesvol overgezet naar bucket.</span><br>";
+        echo "<span style='color:green;'>Overgezet!</span><br>";
     } else {
-        echo "<span style='color:red;'>Upload fout (Code $httpCode)</span><br>";
+        echo "<span style='color:red;'>Upload naar bucket mislukt (Code $httpCode)</span><br>";
     }
 
-    usleep(100000); // Korte pauze voor de server
+    usleep(50000); 
 }
 
-echo "<h3>Sync klaar. Ververs de startpagina.</h3>";
+echo "<h3>Sync voltooid. Ververs de pagina.</h3>";
