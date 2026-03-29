@@ -1,104 +1,89 @@
 <?php
-/** FORCEKES - index.php (Responsive Hero & Clean UI) */
+/** * FORCEKES - index.php (Random Album Grid) */
 require_once 'config.php';
 
-$view = $_GET['view'] ?? 'dashboard';
+// 1. Haal alle foto's op om ze in PHP te groeperen (meest flexibele methode voor random)
+$allMedia = supabaseRequest("album_photos?select=category,image_url", 'GET');
 
-// Haal data op voor het publieke dashboard
-$recentPhotos = supabaseRequest('album_photos?order=created_at.desc&limit=4', 'GET');
-$onlineUsers = supabaseRequest('presence?last_seen=gt.now()-interval \'5 minutes\'', 'GET');
+$albumGrid = [];
+if (is_array($allMedia)) {
+    // Groepeer URL's per categorie
+    $tempGrouped = [];
+    foreach ($allMedia as $item) {
+        $cat = $item['category'];
+        $tempGrouped[$cat][] = $item['image_url'];
+    }
+
+    // Kies van elke categorie 1 willekeurige foto
+    foreach ($tempGrouped as $cat => $images) {
+        if ($cat === 'zwaaikamer') continue; // Sla zwaaikamer over in de grid
+        
+        $albumGrid[] = [
+            'slug' => $cat,
+            'name' => ($cat === 'museum') ? 'Het Museum' : ucfirst($cat),
+            'random_img' => $images[array_rand($images)]
+        ];
+    }
+    
+    // Sorteer de albums alfabetisch (Museum altijd bovenaan is ook een optie)
+    usort($albumGrid, function($a, $b) {
+        return strcmp($a['name'], $b['name']);
+    });
+}
 ?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forcekes Portaal</title>
+    <title>Forcekes | Portaal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #000; color: #fff; overflow-x: hidden; }
-        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
-        .badge { background: rgba(37, 99, 235, 0.85); backdrop-filter: blur(4px); }
+        body { background-color: #000; color: #fff; font-family: 'Inter', sans-serif; }
+        .album-card:hover .album-overlay { background: rgba(0, 0, 0, 0.2); }
+        .album-card:hover img { transform: scale(1.05); }
     </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="bg-black">
+    <?php include 'menu.php'; ?>
 
-    <?php if ($view === 'dashboard'): ?>
-        <?php include 'menu.php'; ?>
-        
-        <main class="max-w-7xl mx-auto px-6 py-8 md:py-12 w-full mt-20 md:mt-24">
-            <header class="mb-10 md:mb-16">
-                <h1 class="text-3xl sm:text-4xl md:text-6xl font-black italic uppercase tracking-tighter leading-none">
-                    Forcekes <span class="text-blue-600">Portaal</span>
-                </h1>
-                <p class="text-zinc-500 mt-3 md:mt-4 text-xs md:text-sm font-medium tracking-wide">
-                    Welkom bij de familie herinneringen.
-                </p>
-            </header>
+    <main class="max-w-7xl mx-auto px-6 py-24 md:py-32">
+        <header class="mb-16 md:mb-24">
+            <h1 class="text-5xl md:text-8xl font-black italic uppercase tracking-tighter leading-none">
+                Welkom bij<br><span class="text-blue-600 text-4xl md:text-7xl">Forcekes Portaal</span>
+            </h1>
+            <div class="h-2 w-24 bg-blue-600 mt-8 rounded-full"></div>
+        </header>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-                <section class="glass p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] flex flex-col">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Nu aanwezig</h3>
-                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_#22c55e]"></span>
-                    </div>
-                    
-                    <div class="space-y-4 flex-grow">
-                        <?php if(!empty($onlineUsers) && is_array($onlineUsers)): ?>
-                            <?php foreach ($onlineUsers as $user): ?>
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] font-black border border-white/5 uppercase">
-                                        <?= substr($user['display_name'] ?? 'B', 0, 1) ?>
-                                    </div>
-                                    <span class="font-bold text-sm"><?= htmlspecialchars($user['display_name'] ?? 'Bezoeker') ?></span>
-                                </div>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <p class="text-xs text-zinc-600 italic">Het is even rustig in het portaal...</p>
-                        <?php endif; ?>
-                    </div>
-                    
-                    <a href="zwaaikamer.php" class="mt-8 block w-full bg-blue-600 text-center py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-500 transition shadow-lg shadow-blue-600/20">
-                        Open Zwaaikamer
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
+            <?php if (!empty($albumGrid)): ?>
+                <?php foreach ($albumGrid as $album): ?>
+                    <a href="gallery.php?page=<?= rawurlencode($album['slug']) ?>" class="album-card group relative block aspect-[4/5] overflow-hidden rounded-[3rem] border border-white/5 bg-zinc-900 transition-all duration-700">
+                        
+                        <img src="<?= htmlspecialchars($album['random_img']) ?>" 
+                             class="absolute inset-0 w-full h-full object-cover transition duration-1000 ease-out grayscale group-hover:grayscale-0"
+                             loading="lazy">
+                        
+                        <div class="album-overlay absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent transition-all duration-500"></div>
+
+                        <div class="absolute bottom-10 left-10 right-10">
+                            <p class="text-[10px] font-black uppercase tracking-[0.3em] text-blue-500 mb-2">Album</p>
+                            <h2 class="text-3xl font-black italic uppercase tracking-tighter text-white"><?= $album['name'] ?></h2>
+                            <div class="w-0 group-hover:w-12 h-1 bg-white mt-4 rounded-full transition-all duration-500"></div>
+                        </div>
                     </a>
-                </section>
-
-                <section class="lg:col-span-2 glass p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem]">
-                    <div class="flex justify-between items-center mb-8">
-                        <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Laatste toevoegingen</h3>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-6">
-                        <?php if(!empty($recentPhotos) && is_array($recentPhotos)): ?>
-                            <?php foreach ($recentPhotos as $img): ?>
-                                <a href="gallery.php?page=<?= $img['category'] ?>" class="group relative aspect-square rounded-2xl md:rounded-3xl overflow-hidden border border-white/5 bg-zinc-900 shadow-xl">
-                                    <img src="<?= htmlspecialchars($img['thumbnail_url']) ?>" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-700">
-                                    <div class="absolute top-2 left-2 md:top-3 md:left-3 badge px-2 md:px-3 py-1 rounded-full text-[7px] md:text-[8px] font-black uppercase text-white">
-                                        <?= ucfirst(htmlspecialchars($img['category'])) ?>
-                                    </div>
-                                </a>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </div>
-                </section>
-            </div>
-        </main>
-
-    <?php elseif ($view === 'login'): ?>
-        <div class="flex-grow flex items-center justify-center p-6">
-            <div class="w-full max-w-md glass p-10 md:p-12 rounded-[3rem] md:rounded-[3.5rem] shadow-2xl">
-                <div class="text-center mb-10">
-                    <h1 class="text-2xl font-black italic uppercase tracking-tighter">Admin <span class="text-blue-600">Toegang</span></h1>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="col-span-full py-20 text-center border border-dashed border-white/10 rounded-[3rem]">
+                    <p class="text-zinc-600 italic">Nog geen foto's gevonden in het systeem...</p>
                 </div>
-                <form action="auth-handler.php?action=login" method="POST" class="space-y-4">
-                    <input type="email" name="email" placeholder="E-mailadres" required class="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-blue-600 text-sm">
-                    <input type="password" name="password" placeholder="Wachtwoord" required class="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-blue-600 text-sm">
-                    <button type="submit" class="w-full bg-blue-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-500 transition">Inloggen</button>
-                </form>
-            </div>
+            <?php endif; ?>
         </div>
-    <?php endif; ?>
+    </main>
 
+    <footer class="max-w-7xl mx-auto px-6 py-12 border-t border-white/5 text-center">
+        <p class="text-[10px] font-black uppercase tracking-widest text-zinc-800">Forcekes Portaal &copy; 2026</p>
+    </footer>
 </body>
 </html>
