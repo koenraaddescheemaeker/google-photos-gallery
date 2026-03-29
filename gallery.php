@@ -1,93 +1,123 @@
-<?php
-/** * FORCEKES - gallery.php (Fixed for Spaces & Slugs) */
-require_once 'config.php';
-
-// 1. Haal de categorie op en maak deze veilig voor de URL
-$pageSlug = $_GET['page'] ?? 'museum';
-
-// CRUCIAAL: Gebruik rawurlencode om spaties (zoals in 'feest 2025') te fixen
-$encodedSlug = rawurlencode($pageSlug);
-
-// 2. Haal de foto's op uit de database
-$photos = supabaseRequest("album_photos?category=eq.$encodedSlug&select=*&order=captured_at.desc", 'GET');
-
-// 3. Dynamische naamgeving voor de titel
-$displayName = ($pageSlug === 'joris') ? 'Joris' : (($pageSlug === 'museum') ? 'Het Museum' : ucfirst(htmlspecialchars($pageSlug)));
-
-$hasError = false;
-$errorMessage = "";
-
-// Verbeterde error-check
-if ($photos === null || (isset($photos['error']) && $photos['error'] === true)) {
-    $hasError = true;
-    $errorMessage = "Kon geen verbinding maken met de database. Controleer de instellingen.";
-} elseif (isset($photos['message'])) {
-    // Supabase geeft soms een foutmelding in een 'message' veld
-    $hasError = true;
-    $errorMessage = "Database meldt: " . $photos['message'];
-}
-?>
-<!DOCTYPE html>
-<html lang="nl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forcekes | <?= $displayName ?></title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #000; color: #fff; overflow-x: hidden; }
+<div id="forcekes-modal" class="fixed inset-0 z-[9999] bg-black hidden flex-col items-center justify-center opacity-0 transition-opacity duration-300">
+    
+    <div class="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-[10001]">
+        <button id="modal-close" class="flex items-center space-x-3 bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10 px-6 py-3 rounded-full transition-all group">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-zinc-400 group-hover:text-white">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            <span class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 group-hover:text-white">Sluiten</span>
+        </button>
         
-        /* Modal & UI styling blijft behouden zoals voorheen */
-        #forcekes-modal { position: fixed; inset: 0; z-index: 9999; display: none; align-items: center; justify-content: center; background-color: #000; }
-        .modal-media { width: 100%; height: 100%; object-fit: contain; }
-    </style>
-</head>
-<body class="bg-black">
-    <?php include 'menu.php'; ?>
+        <button id="forcekes-download-btn" class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-xl shadow-blue-600/20">
+            Opslaan
+        </button>
+    </div>
 
-    <main class="max-w-7xl mx-auto px-6 py-20 mt-20">
-        <header class="mb-16">
-            <h1 class="text-4xl md:text-6xl font-black italic uppercase tracking-tighter leading-none"><?= $displayName ?></h1>
-            <div class="h-2 w-24 bg-blue-600 mt-6 rounded-full"></div>
-        </header>
+    <button id="modal-prev" class="absolute left-4 md:left-10 top-1/2 -translate-y-1/2 z-[10001] p-4 bg-black/40 hover:bg-blue-600 rounded-full transition-all group border border-white/5">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="text-white">
+            <path d="M15 18l-6-6 6-6"/>
+        </svg>
+    </button>
 
-        <?php if ($hasError): ?>
-            <div class="py-20 text-center glass rounded-[3rem] border border-red-900/20">
-                <p class="text-red-500 font-bold"><?= $errorMessage ?></p>
-                <p class="text-[10px] text-zinc-600 uppercase mt-4 tracking-widest">Gevraagd album: <?= htmlspecialchars($pageSlug) ?></p>
-            </div>
-        <?php else: ?>
-            <div class="gallery grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
-                <?php if (!empty($photos) && is_array($photos)): ?>
-                    <?php foreach ($photos as $index => $p): 
-                        if (!isset($p['image_url'])) continue;
-                        $url = htmlspecialchars($p['image_url']);
-                        $isVid = (strpos($url, '.mp4') !== false || strpos($url, '.webm') !== false);
-                    ?>
-                        <a href="<?= $url ?>" class="gallery-item group" data-index="<?= $index ?>" data-type="<?= $isVid ? 'video' : 'image' ?>">
-                            <div class="aspect-square rounded-[2rem] md:rounded-[3rem] overflow-hidden border border-white/5 bg-zinc-900 relative">
-                                <?php if ($isVid): ?>
-                                    <video src="<?= $url ?>#t=0.1" class="w-full h-full object-cover opacity-60" muted playsinline></video>
-                                    <div class="absolute inset-0 flex items-center justify-center">
-                                        <div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center pl-1"><svg fill="white" viewBox="0 0 24 24" class="w-6 h-6"><path d="M8 5v14l11-7z"/></svg></div>
-                                    </div>
-                                <?php else: ?>
-                                    <img src="<?= $url ?>" class="w-full h-full object-cover group-hover:scale-105 transition duration-700" loading="lazy">
-                                <?php endif; ?>
-                            </div>
-                        </a>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <div class="col-span-full py-20 text-center border border-dashed border-white/10 rounded-[3rem]">
-                        <p class="text-zinc-500 italic">Dit gedeelte van <strong><?= strtolower($displayName) ?></strong> is momenteel leeg...</p>
-                    </div>
-                <?php endif; ?>
-            </div>
-        <?php endif; ?>
-    </main>
+    <button id="modal-next" class="absolute right-4 md:right-10 top-1/2 -translate-y-1/2 z-[10001] p-4 bg-black/40 hover:bg-blue-600 rounded-full transition-all group border border-white/5">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="text-white">
+            <path d="M9 18l6-6-6-6"/>
+        </svg>
+    </button>
 
-    <?php include 'modal-logic.php'; // Indien je dit apart hebt staan, anders de script tag hier ?>
+    <div id="modal-content" class="w-full h-full flex items-center justify-center p-4 md:p-20">
+        <img id="modal-img" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl hidden shadow-black/50">
+        <video id="modal-video" class="max-w-full max-h-full rounded-lg hidden" controls autoplay loop playsinline></video>
+    </div>
 
-</body>
-</html>
+    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-[0.4em] text-zinc-600">
+        <?= $displayName ?> &middot; <span id="modal-counter">0 / 0</span>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('forcekes-modal');
+    const modalImg = document.getElementById('modal-img');
+    const modalVideo = document.getElementById('modal-video');
+    const modalCounter = document.getElementById('modal-counter');
+    const galleryItems = document.querySelectorAll('.gallery-item');
+    let currentIndex = 0;
+
+    function openModal(index) {
+        const item = galleryItems[index];
+        if (!item) return;
+
+        currentIndex = index;
+        const url = item.href;
+        const type = item.getAttribute('data-type');
+
+        // Reset
+        modalImg.classList.add('hidden');
+        modalVideo.classList.add('hidden');
+        modalVideo.pause();
+        modalVideo.src = "";
+
+        if (type === 'video') {
+            modalVideo.src = url;
+            modalVideo.classList.remove('hidden');
+        } else {
+            modalImg.src = url;
+            modalImg.classList.remove('hidden');
+        }
+
+        // Update Counter
+        modalCounter.innerText = `${currentIndex + 1} / ${galleryItems.length}`;
+
+        // Show Modal with animation
+        modal.classList.remove('hidden');
+        setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+        modal.classList.add('opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modalVideo.pause();
+            modalVideo.src = "";
+        }, 300);
+        document.body.style.overflow = '';
+    }
+
+    function navigate(direction) {
+        currentIndex = (currentIndex + direction + galleryItems.length) % galleryItems.length;
+        openModal(currentIndex);
+    }
+
+    // Event Listeners
+    galleryItems.forEach((item, index) => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            openModal(index);
+        });
+    });
+
+    document.getElementById('modal-close').onclick = closeModal;
+    document.getElementById('modal-prev').onclick = (e) => { e.stopPropagation(); navigate(-1); };
+    document.getElementById('modal-next').onclick = (e) => { e.stopPropagation(); navigate(1); };
+    
+    document.getElementById('forcekes-download-btn').onclick = () => {
+        const currentUrl = galleryItems[currentIndex].href;
+        window.location.href = 'download.php?file=' + encodeURIComponent(currentUrl);
+    };
+
+    // Keyboard support
+    document.addEventListener('keydown', (e) => {
+        if (modal.classList.contains('hidden')) return;
+        if (e.key === 'Escape') closeModal();
+        if (e.key === 'ArrowLeft') navigate(-1);
+        if (e.key === 'ArrowRight') navigate(1);
+    });
+
+    // Close on background click
+    modal.onclick = (e) => {
+        if (e.target === modal || e.target.id === 'modal-content') closeModal();
+    };
+});
+</script>
