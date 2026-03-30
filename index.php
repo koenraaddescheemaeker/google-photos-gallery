@@ -1,5 +1,5 @@
 <?php
-/** * FORCEKES - index.php (Fase 7: Search & Performance) */
+/** * FORCEKES - index.php (Fase 8: Absolute Elegance) */
 require_once 'config.php';
 
 // Data ophalen via RPC
@@ -18,104 +18,126 @@ if (!empty($albumGrid)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forcekes | Portaal</title>
+    <title>Forcekes Portaal | Archief</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { background-color: #000; color: #fff; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
-        .zwaai-card { background: #050505; border: 1px solid rgba(59, 130, 246, 0.2); }
-        .album-card { transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
-        img { transition: filter 0.8s, transform 0.8s; filter: grayscale(100%) opacity(0.5); content-visibility: auto; }
-        .group:hover img { filter: grayscale(0%) opacity(1); transform: scale(1.05); }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&family=Playfair+Display:ital,wght@1,700;1,900&display=swap');
         
-        /* Custom Search Style */
-        #search-input::placeholder { color: rgba(255,255,255,0.2); text-transform: uppercase; letter-spacing: 0.1em; font-size: 10px; font-weight: 900; }
-        .search-container { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); }
+        body { 
+            background-color: #050505; 
+            color: #fff; 
+            font-family: 'Inter', sans-serif; 
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        /* Film Grain Overlay */
+        .grain::before {
+            content: "";
+            position: fixed;
+            top: -150%; left: -150%;
+            width: 300%; height: 300%;
+            background-image: url("https://grainy-gradients.vercel.app/noise.svg");
+            opacity: 0.04;
+            pointer-events: none;
+            animation: grain 8s steps(10) infinite;
+            z-index: 50;
+        }
+        @keyframes grain {
+            0%, 100% { transform:translate(0, 0) }
+            10% { transform:translate(-5%, -10%) }
+            50% { transform:translate(-15%, 10%) }
+            90% { transform:translate(-10%, 10%) }
+        }
+
+        .mesh-bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.08) 0%, transparent 40%);
+            z-index: -1;
+        }
+
+        .serif-italic { font-family: 'Playfair Display', serif; font-style: italic; }
         
-        @media (min-width: 1024px) { .grid { gap: 2rem; } }
+        .album-card { transition: all 0.7s cubic-bezier(0.2, 1, 0.3, 1); }
+        .album-card:hover { transform: translateY(-8px) scale(1.02); }
+
+        .img-zoom {
+            transition: transform 1.2s cubic-bezier(0.2, 1, 0.3, 1), filter 1.2s ease;
+            filter: grayscale(40%) brightness(0.8);
+        }
+        .album-card:hover .img-zoom { transform: scale(1.1); filter: grayscale(0%) brightness(1); }
+
+        .glass-ui {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .stagger-in { animation: staggerIn 0.8s cubic-bezier(0.2, 1, 0.3, 1) both; }
+        @keyframes staggerIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
-<body class="bg-black">
+<body class="bg-black grain">
+    <div class="mesh-bg"></div>
     <?php include 'menu.php'; ?>
 
-    <main class="max-w-7xl mx-auto px-6 pt-32 pb-20">
+    <main class="max-w-7xl mx-auto px-8 pt-40 pb-32">
         
-        <div class="mb-12 flex justify-center">
-            <div class="search-container relative w-full max-w-md rounded-full px-6 py-3 flex items-center focus-within:border-blue-600/50 transition-all">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="3" class="mr-4">
+        <header class="mb-24 text-center stagger-in" style="animation-delay: 0.1s;">
+            <h1 class="text-6xl md:text-8xl font-black italic uppercase tracking-tighter leading-none mb-6">
+                Force<span class="text-blue-600">kes</span> Portaal
+            </h1>
+            <p class="serif-italic text-2xl md:text-3xl text-zinc-400">Het familiearchief, <span class="text-white">vlijmscherp</span> bewaard.</p>
+        </header>
+
+        <div class="mb-20 flex justify-center stagger-in" style="animation-delay: 0.2s;">
+            <div id="search-container" class="glass-ui relative w-full max-w-2xl rounded-2xl px-8 py-5 flex items-center transition-all duration-500 hover:border-blue-600/30">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2.5" class="mr-6">
                     <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
-                <input type="text" id="search-input" placeholder="Zoek een herinnering..." 
-                       class="bg-transparent border-none outline-none text-xs font-bold w-full uppercase tracking-widest">
+                <input type="text" id="search-input" placeholder="Zoek in de geschiedenis..." 
+                       class="bg-transparent border-none outline-none text-sm font-medium w-full uppercase tracking-[0.2em] placeholder:text-zinc-700">
             </div>
         </div>
 
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-6" id="album-wrapper">
-            
-            <a href="zwaaikamer.php" class="zwaai-card group relative block aspect-square overflow-hidden rounded-[2rem] transition-all duration-500">
-                <div class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" class="mb-3">
-                        <path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
-                    </svg>
-                    <h2 class="text-[10px] font-black uppercase tracking-widest text-white leading-tight">Zwaai<br>Kamer</h2>
-                    <div class="mt-3 w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                </div>
-            </a>
-
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-10" id="album-wrapper">
             <?php 
-            $count = 0;
+            $i = 0;
             foreach ($albumGrid as $album): 
-                $count++;
+                $i++;
                 $slug = (string)($album['category_name'] ?? '');
                 if (empty($slug)) continue;
                 $name = ($slug === 'museum') ? 'HET MUSEUM' : strtoupper($slug);
-                $isPriority = ($count <= 6);
             ?>
-                <div class="album-card" data-name="<?= strtolower($slug) ?>">
-                    <a href="gallery.php?page=<?= rawurlencode($slug) ?>" class="group relative block aspect-square overflow-hidden rounded-[2rem] border border-white/5 bg-zinc-900 transition-all duration-700">
-                        <img 
-                            src="<?= htmlspecialchars($album['cover_url'] ?? '') ?>" 
-                            class="absolute inset-0 w-full h-full object-cover" 
-                            loading="<?= $isPriority ? 'eager' : 'lazy' ?>"
-                            fetchpriority="<?= $isPriority ? 'high' : 'low' ?>"
-                            decoding="async"
-                            alt="<?= $name ?>"
-                        >
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent"></div>
-                        <div class="absolute bottom-5 left-5 right-5 text-center">
-                            <h2 class="text-[9px] font-black uppercase tracking-widest text-white truncate"><?= $name ?></h2>
-                            <span class="text-[8px] font-bold text-blue-500 uppercase mt-1 block"><?= (int)($album['photo_count'] ?? 0) ?> FOTO'S</span>
+                <div class="album-card stagger-in" style="animation-delay: <?= 0.3 + ($i * 0.05) ?>s;" data-name="<?= strtolower($slug) ?>">
+                    <a href="gallery.php?page=<?= rawurlencode($slug) ?>" class="relative block aspect-[4/5] overflow-hidden rounded-[3rem] glass-ui group">
+                        <img src="<?= htmlspecialchars($album['cover_url'] ?? '') ?>" class="img-zoom absolute inset-0 w-full h-full object-cover" loading="lazy">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-80"></div>
+                        <div class="absolute inset-0 p-10 flex flex-col justify-end">
+                            <h2 class="text-lg font-black uppercase tracking-tighter text-white italic"><?= $name ?></h2>
                         </div>
                     </a>
                 </div>
             <?php endforeach; ?>
         </div>
-
-        <div id="no-results" class="hidden text-center py-20">
-            <p class="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700 italic">Niets gevonden in de archieven...</p>
-        </div>
     </main>
 
     <script>
+        // Real-time Filter
         const searchInput = document.getElementById('search-input');
-        const albumCards = document.querySelectorAll('.album-card');
-        const noResults = document.getElementById('no-results');
+        const albumCards = document.querySelectorAll('.album-card[data-name]');
 
         searchInput.addEventListener('input', (e) => {
             const term = e.target.value.toLowerCase().trim();
-            let hasVisible = false;
-
             albumCards.forEach(card => {
                 const name = card.getAttribute('data-name');
-                if (name.includes(term)) {
-                    card.style.display = 'block';
-                    hasVisible = true;
-                } else {
-                    card.style.display = 'none';
-                }
+                card.style.display = name.includes(term) ? 'block' : 'none';
             });
-
-            noResults.style.display = hasVisible ? 'none' : 'block';
         });
     </script>
 </body>
