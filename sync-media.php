@@ -1,19 +1,25 @@
 <?php
-/** * FORCEKES - sync-media.php (Fase 9: Dual-Sync Thumbnails) */
+/** * FORCEKES - sync-media.php (Fase 9: De Grote URL-Vervanger) */
 require_once 'config.php';
 
-// Match de 1-uur limiet van de Docker & Cron
+// We geven de uil een vol uur de tijd voor deze grote migratie
 set_time_limit(3600);
 ini_set('memory_limit', '512M');
 ignore_user_abort(true);
 
 $isCron = (php_sapi_name() === 'cli' || isset($_GET['cron']));
-$limit = $isCron ? 200 : 10; // Iets lagere limiet omdat we nu 2 bestanden per item verwerken
+// We pakken een batch van 15 per keer in de browser om de voortgang te zien
+$limit = $isCron ? 250 : 15; 
 
-echo "<h2>MIGRATOR <span style='color:#3b82f6;'>DUAL-SYNC</span></h2>";
-echo "<p>Status: <strong>" . ($isCron ? "Automatisatie" : "Handmatige Batch") . "</strong></p>";
+echo "<h2>ARCHIEF <span style='color:#3b82f6;'>REINIGING</span></h2>";
+echo "<p>Status: <strong>" . ($isCron ? "Automatische Overschrijving" : "Handmatige Batch") . "</strong></p>";
 
-// Haal items op waar de image_url OF de thumbnail_url nog naar Google wijst
+/**
+ * We zoeken items waar:
+ * 1. De image_url nog GEEN 'supabase.co' bevat
+ * OF
+ * 2. De thumbnail_url nog GEEN 'supabase.co' bevat
+ */
 $items = supabaseRequest("album_photos?or=(image_url.not.like.*supabase.co*,thumbnail_url.not.like.*supabase.co*)&limit=$limit", 'GET');
 
 if (is_array($items) && count($items) > 0) {
@@ -22,12 +28,12 @@ if (is_array($items) && count($items) > 0) {
         $category = trim($item['category'] ?? 'ongecategoriseerd');
         $updateData = [];
 
-        echo "<div style='margin-bottom:10px; padding:10px; border-left:3px solid #3b82f6; background:#111;'>";
-        echo "Verwerken ID: <strong>$id</strong> ($category)<br>";
+        echo "<div style='margin-bottom:10px; padding:15px; border-radius:15px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); font-family:sans-serif; font-size:12px;'>";
+        echo "Controleer item: <strong>$id</strong> in <em>$category</em><br>";
 
-        // --- 1. HOOFDFOTO SYNC ---
+        // --- 1. VERVANG HOOFDFOTO ---
         if (strpos($item['image_url'], 'supabase.co') === false) {
-            echo "-> Hoofdfoto downloaden... ";
+            echo "⚡ Google Foto link gedetecteerd. Migreren... ";
             $imgData = downloadFile($item['image_url']);
             if ($imgData) {
                 $ext = (strpos($imgData['mime'], 'video') !== false) ? '.mp4' : '.jpg';
@@ -35,45 +41,46 @@ if (is_array($items) && count($items) > 0) {
                 $newUrl = uploadToSupabase($path, $imgData['data'], $imgData['mime']);
                 if ($newUrl) {
                     $updateData['image_url'] = $newUrl;
-                    echo "<span style='color:green;'>OK</span><br>";
+                    echo "<span style='color:green;'>VERVANGEN ✓</span><br>";
                 }
-            } else { echo "<span style='color:red;'>Mislukt</span><br>"; }
+            } else { echo "<span style='color:red;'>FOUT</span><br>"; }
         }
 
-        // --- 2. THUMBNAIL SYNC ---
+        // --- 2. VERVANG THUMBNAIL ---
         if (strpos($item['thumbnail_url'], 'supabase.co') === false && !empty($item['thumbnail_url'])) {
-            echo "-> Thumbnail downloaden... ";
+            echo "⚡ Google Thumbnail link gedetecteerd. Migreren... ";
             $thumbData = downloadFile($item['thumbnail_url']);
             if ($thumbData) {
-                // Thumbnails slaan we op in een submap 'thumbnails'
+                // We slaan thumbnails op in een overzichtelijke submap
                 $thumbPath = 'thumbnails/' . $category . '/' . $id . '.jpg';
                 $newThumbUrl = uploadToSupabase($thumbPath, $thumbData['data'], 'image/jpeg');
                 if ($newThumbUrl) {
                     $updateData['thumbnail_url'] = $newThumbUrl;
-                    echo "<span style='color:green;'>OK</span><br>";
+                    echo "<span style='color:green;'>VERVANGEN ✓</span><br>";
                 }
-            } else { echo "<span style='color:red;'>Mislukt</span><br>"; }
+            } else { echo "<span style='color:red;'>FOUT</span><br>"; }
         }
 
-        // --- 3. DATABASE BIJWERKEN ---
+        // --- 3. DATABASE UPDATE (De daadwerkelijke vervanging) ---
         if (!empty($updateData)) {
             supabaseRequest("album_photos?id=eq.$id", "PATCH", $updateData);
+            echo "<p style='color:#3b82f6; font-weight:bold;'>Database succesvol bijgewerkt voor dit archiefstuk.</p>";
+        } else {
+            echo "Geen wijzigingen nodig.";
         }
         echo "</div>";
-        
-        usleep(100000); // 0.1s rust
     }
 
     if (!$isCron) {
-        echo "<script>setTimeout(() => { window.location.reload(); }, 2000);</script>";
-        echo "<p>Batch voltooid. Volgende reeks start over 2 seconden...</p>";
+        echo "<script>setTimeout(() => { window.location.reload(); }, 1500);</script>";
+        echo "<p>Batch voltooid. De uil zoekt de volgende reeks...</p>";
     }
 } else {
-    echo "<h3 style='color:green;'>✓ Alle hoofdfoto's én thumbnails staan veilig in de kluis.</h3>";
+    echo "<h3 style='color:green;'>✓ Missie Voltooid: Alle Google-links zijn definitief verbannen uit het portaal.</h3>";
 }
 
 /**
- * Helper: Bestand downloaden met User-Agent
+ * HELPERS
  */
 function downloadFile($url) {
     $ch = curl_init($url);
@@ -84,13 +91,9 @@ function downloadFile($url) {
     $data = curl_exec($ch);
     $mime = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
     curl_close($ch);
-    
     return ($data && strlen($data) > 500) ? ['data' => $data, 'mime' => $mime] : false;
 }
 
-/**
- * Helper: Uploaden naar Supabase Storage
- */
 function uploadToSupabase($path, $data, $mime) {
     $uploadUrl = SUPABASE_URL . '/storage/v1/object/familie-media/' . rawurlencode($path);
     $ch = curl_init($uploadUrl);
@@ -105,9 +108,5 @@ function uploadToSupabase($path, $data, $mime) {
     $res = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-
-    if ($httpCode === 200 || $httpCode === 201) {
-        return SUPABASE_URL . '/storage/v1/object/public/familie-media/' . $path;
-    }
-    return false;
+    return ($httpCode === 200 || $httpCode === 201) ? SUPABASE_URL . '/storage/v1/object/public/familie-media/' . $path : false;
 }
