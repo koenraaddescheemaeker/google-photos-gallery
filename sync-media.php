@@ -1,89 +1,80 @@
 <?php
-/** * FORCEKES - sync-media.php (Bucket Migrator v3) */
+/** * FORCEKES - sync-media.php (Marathon Edition) */
 require_once 'config.php';
-set_time_limit(0); 
 
-echo "<h2>BUCKET <span style='color:#3b82f6;'>MIGRATOR</span></h2>";
+// Match de 1-uur limiet van de Docker & Cron
+set_time_limit(3600);
+ini_set('memory_limit', '512M');
+ignore_user_abort(true);
 
-// 1. Haal de data op
-$res = supabaseRequest("album_photos?select=*", 'GET');
+// Detecteer of dit een Cron-job of handmatige actie is
+$isCron = (php_sapi_name() === 'cli' || isset($_GET['cron']));
+$limit = $isCron ? 500 : 15; 
 
-if ($res === null) {
-    die("<p style='color:red;'>FOUT: De database gaf GEEN antwoord (null). Controleer je API keys.</p>");
-}
+echo "<h2>MIGRATOR <span style='color:#3b82f6;'>MARATHON</span></h2>";
+echo "<p>Status: <strong>" . ($isCron ? "Automatisatie Actief" : "Handmatige Batch") . "</strong></p>";
 
-if (isset($res['error'])) {
-    die("<p style='color:red;'>FOUT: Database gaf een error: " . ($res['message'] ?? 'Onbekend') . "</p>");
-}
+// Haal items op die nog op Google staan (geen supabase.co in de URL)
+$items = supabaseRequest("album_photos?image_url=not.like.*supabase.co*&limit=$limit", 'GET');
 
-$toSync = [];
-$alreadyInBucket = 0;
+if (is_array($items) && count($items) > 0) {
+    foreach ($items as $item) {
+        $id = $item['id'];
+        $category = trim($item['category'] ?? 'ongecategoriseerd');
+        $oldUrl = $item['image_url'];
 
-foreach ($res as $item) {
-    $url = $item['image_url'] ?? '';
-    // Als de URL NIET ons eigen Supabase domein bevat, moet hij gesynct worden
-    if (!empty($url) && strpos($url, 'supabase.co') === false) {
-        $toSync[] = $item;
-    } else {
-        $alreadyInBucket++;
+        echo "Verwerken: $id... ";
+
+        // Download van Google
+        $ch = curl_init($oldUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36');
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        $binaryData = curl_exec($ch);
+        $mimeType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+        curl_close($ch);
+
+        if (!$binaryData || strlen($binaryData) < 1000) {
+            echo "<span style='color:red;'>Download mislukt.</span><br>";
+            continue;
+        }
+
+        // Pad bepalen in de Bucket
+        $ext = (strpos($mimeType, 'video') !== false) ? '.mp4' : '.jpg';
+        $storagePath = $category . '/' . $id . $ext;
+        $uploadUrl = SUPABASE_URL . '/storage/v1/object/familie-media/' . rawurlencode($storagePath);
+        
+        // Upload naar Supabase Bucket
+        $ch = curl_init($uploadUrl);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $binaryData);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
+            'Content-Type: $mimeType',
+            'x-upsert: true'
+        ]);
+        $res = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode === 200 || $httpCode === 201) {
+            $newUrl = SUPABASE_URL . '/storage/v1/object/public/familie-media/' . str_replace(' ', '%20', $storagePath);
+            supabaseRequest("album_photos?id=eq.$id", "PATCH", ['image_url' => $newUrl]);
+            echo "<span style='color:green;'>Succes.</span><br>";
+        } else {
+            echo "<span style='color:red;'>Upload fout ($httpCode).</span><br>";
+        }
+        
+        usleep(50000); // Korte pauze voor stabiliteit
     }
-}
 
-echo "<p>Database status: <strong>$alreadyInBucket</strong> items in bucket, <strong>" . count($toSync) . "</strong> items te verwerken.</p><hr>";
-
-if (empty($toSync)) {
-    echo "<p style='color:green;'>✓ Alles is al overgezet naar de Supabase Bucket!</p>";
-    exit;
-}
-
-foreach ($toSync as $item) {
-    $id = $item['id'];
-    $category = trim($item['category'] ?? 'ongecategoriseerd');
-    $externalUrl = $item['image_url'];
-
-    echo "Verwerken: <span style='color:#3b82f6;'>$category</span> / " . substr($id, 0, 8) . "... ";
-
-    // Downloaden met User-Agent
-    $ch = curl_init($externalUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36');
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    $binaryData = curl_exec($ch);
-    $mimeType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-    curl_close($ch);
-
-    if (!$binaryData) {
-        echo "<span style='color:red;'>Download mislukt.</span><br>";
-        continue;
+    // Browser-modus: ververs automatisch voor de volgende batch
+    if (!$isCron) {
+        echo "<script>setTimeout(() => { window.location.reload(); }, 1500);</script>";
+        echo "<p>Batch voltooid. Volgende stap start automatisch...</p>";
     }
-
-    // Bestandstype en pad
-    $ext = (strpos($mimeType, 'video') !== false) ? '.mp4' : '.jpg';
-    $storagePath = $category . '/' . $id . $ext;
-
-    // Upload naar Bucket
-    $uploadUrl = SUPABASE_URL . '/storage/v1/object/familie-media/' . rawurlencode($storagePath);
-    
-    $ch = curl_init($uploadUrl);
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $binaryData);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Authorization: Bearer ' . SUPABASE_SERVICE_KEY,
-        'Content-Type: ' . $mimeType,
-        'x-upsert: true'
-    ]);
-    $uploadRes = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($httpCode === 200 || $httpCode === 201) {
-        // Update database met de nieuwe publieke bucket-URL
-        $newUrl = SUPABASE_URL . '/storage/v1/object/public/familie-media/' . str_replace(' ', '%20', $storagePath);
-        supabaseRequest("album_photos?id=eq.$id", "PATCH", ['image_url' => $newUrl]);
-        echo "<span style='color:green;'>Succesvol overgezet naar bucket.</span><br>";
-    } else {
-        echo "<span style='color:red;'>Upload fout (Code $httpCode)</span><br>";
-    }
+} else {
+    echo "<h3 style='color:green;'>✓ Alle media staat veilig in de kluis.</h3>";
 }
-echo "<h3>Sync voltooid.</h3>";
