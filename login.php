@@ -1,7 +1,6 @@
 <?php
-/** * FORCEKES - login.php (Fase 9: Ritual of Entry) */
+/** * FORCEKES - login.php (Fase 10: Auth-Handler Fix) */
 require_once 'config.php';
-// Eenvoudige login logica blijft hetzelfde, we veranderen alleen de UI
 ?>
 <!DOCTYPE html>
 <html lang="nl">
@@ -11,7 +10,7 @@ require_once 'config.php';
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;900&family=Playfair+Display:ital,wght@1,900&display=swap');
         body { background: #000; color: #fff; font-family: 'Inter', sans-serif; overflow: hidden; }
-        .video-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.3; filter: blur(10px) grayscale(100%); z-index: -1; }
+        .video-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.2; filter: blur(8px) grayscale(100%); z-index: -1; }
         .ritual-card { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.05); }
         .serif-italic { font-family: 'Playfair Display', serif; font-style: italic; }
         input { background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: #fff !important; text-align: center; }
@@ -27,10 +26,10 @@ require_once 'config.php';
     <div class="ritual-card max-w-md w-full p-16 rounded-[4rem] text-center shadow-2xl">
         <header class="mb-12">
             <h1 class="text-4xl font-black italic uppercase tracking-tighter mb-4">Force<span class="text-blue-600">kes</span></h1>
-            <p class="serif-italic text-xl text-zinc-400 italic">Identificeer uzelf</p>
+            <p class="serif-italic text-xl text-zinc-400">Identificeer uzelf</p>
         </header>
 
-        <form action="auth.php" method="POST" class="space-y-8">
+        <form action="auth-handler.php" method="POST" class="space-y-8">
             <input type="email" name="email" required placeholder="E-MAILADRES" class="w-full py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none transition-all">
             <input type="password" name="password" required placeholder="WACHTWOORD" class="w-full py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none transition-all">
             <button type="submit" class="w-full py-6 bg-white text-black rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] hover:bg-blue-600 hover:text-white transition-all shadow-xl shadow-white/5">
@@ -39,18 +38,8 @@ require_once 'config.php';
         </form>
 
         <footer class="mt-12">
-            <a href="index.php" class="text-[8px] font-black uppercase tracking-widest text-zinc-600 hover:text-white transition">Annuleer en keer terug</a>
+            <a href="index.php" class="text-[8px] font-black uppercase tracking-widest text-zinc-600 hover:text-white transition">Keer terug naar het portaal</a>
         </footer>
     </div>
-
-    <script>
-        // Subtiele ambient sound bij laden
-        window.addEventListener('click', () => {
-            const ambient = new Audio('https://assets.mixkit.co/active_storage/sfx/2560/2560-preview.mp3');
-            ambient.volume = 0.1;
-            ambient.loop = true;
-            ambient.play();
-        }, { once: true });
-    </script>
 </body>
 </html>
