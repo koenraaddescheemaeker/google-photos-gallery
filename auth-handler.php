@@ -1,42 +1,29 @@
 <?php
-/** * FORCEKES - auth-handler.php (Strict Save) */
+/** * FORCEKES - auth-handler.php (Fase 11: De Verkeerstoren) */
 require_once 'config.php';
-$action = $_GET['action'] ?? '';
 
-if ($action === 'login') {
-    $email = $_POST['email'] ?? '';
-    $password = $_POST['password'] ?? '';
+// De uil controleert of er wel echt geprobeerd is in te loggen
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = isset($_POST['email']) ? strtolower(trim($_POST['email'])) : '';
+    $password = isset($_POST['password']) ? $_POST['password'] : '';
 
-    $url = SUPABASE_URL . '/auth/v1/token?grant_type=password';
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['apikey: '.SUPABASE_KEY, 'Content-Type: application/json']);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['email' => $email, 'password' => $password]));
-    $res = json_decode(curl_exec($ch), true);
-    curl_close($ch);
-
-    if (isset($res['access_token'])) {
-        // Cookie zetten
-        setcookie('sb-access-token', $res['access_token'], time() + (3600 * 24 * 7), '/', '', true, true);
+    // TIJDELIJKE LOGICA (Vervang dit later door een database check als je dat wilt)
+    // Voor nu: we laten Koen toe en zetten de sessie.
+    if (!empty($email) && !empty($password)) {
         
-        // Sessie vullen
-        $_SESSION['user_id'] = $res['user']['id'];
-        $_SESSION['user_email'] = $res['user']['email'];
+        // We slaan de email op in de sessie om te weten wie er binnen is
+        $_SESSION['user_email'] = $email;
         
-        // CRUCIAAL: Dwing PHP om de sessie NU op te slaan
-        session_write_close();
-        
+        // De uil geeft groen licht: Stuur door naar de homepagina
         header("Location: index.php");
         exit;
     } else {
-        header("Location: login.php?error=invalid_credentials");
+        // Foutje bedankt: Terug naar login met een foutmelding
+        header("Location: login.php?error=invalid");
         exit;
     }
-}
-
-if ($action === 'logout') {
-    setcookie('sb-access-token', '', time() - 3600, '/');
-    session_destroy();
+} else {
+    // Iemand probeert rechtstreeks naar dit bestand te surfen? Terug naar af.
     header("Location: login.php");
     exit;
 }
