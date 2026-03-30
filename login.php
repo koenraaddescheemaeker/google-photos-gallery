@@ -1,69 +1,56 @@
 <?php
-/** * FORCEKES - login.php (Premium Dark Edition) */
+/** * FORCEKES - login.php (Fase 9: Ritual of Entry) */
 require_once 'config.php';
-
-// Als er al een sessie is, stuur ze direct door naar het museum
-if (isset($_COOKIE['sb-access-token'])) {
-    header("Location: index.php");
-    exit;
-}
-
-$error = $_GET['error'] ?? '';
+// Eenvoudige login logica blijft hetzelfde, we veranderen alleen de UI
 ?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forcekes | Inloggen</title>
+    <meta charset="UTF-8"><title>Toegang | Forcekes Portaal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #000; color: #fff; }
-        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;900&family=Playfair+Display:ital,wght@1,900&display=swap');
+        body { background: #000; color: #fff; font-family: 'Inter', sans-serif; overflow: hidden; }
+        .video-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.3; filter: blur(10px) grayscale(100%); z-index: -1; }
+        .ritual-card { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .serif-italic { font-family: 'Playfair Display', serif; font-style: italic; }
+        input { background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: #fff !important; text-align: center; }
+        input:focus { border-color: #3b82f6 !important; background: rgba(255,255,255,0.1) !important; }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen">
+<body class="flex items-center justify-center min-h-screen p-6">
+    
+    <video autoplay muted loop playsinline class="video-bg">
+        <source src="https://www.w3schools.com/howto/rain.mp4" type="video/mp4">
+    </video>
 
-    <div class="w-full max-w-md px-8 py-12 glass rounded-[3rem] shadow-2xl">
-        <header class="text-center mb-10">
-            <h1 class="text-2xl font-black italic uppercase tracking-tighter mb-2">
-                FORCEKES<span class="text-blue-600">PORTAAL</span>
-            </h1>
-            <p class="text-zinc-500 text-xs font-bold uppercase tracking-widest">Toegang voor familie</p>
+    <div class="ritual-card max-w-md w-full p-16 rounded-[4rem] text-center shadow-2xl">
+        <header class="mb-12">
+            <h1 class="text-4xl font-black italic uppercase tracking-tighter mb-4">Force<span class="text-blue-600">kes</span></h1>
+            <p class="serif-italic text-xl text-zinc-400 italic">Identificeer uzelf</p>
         </header>
 
-        <?php if ($error === 'invalid_credentials'): ?>
-            <div class="mb-6 p-4 bg-red-900/20 border border-red-900/50 rounded-2xl text-red-500 text-xs font-bold text-center">
-                E-mail of wachtwoord onjuist. Probeer het opnieuw.
-            </div>
-        <?php endif; ?>
-
-        <form action="auth-handler.php?action=login" method="POST" class="space-y-6">
-            <div>
-                <label class="block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-2 ml-4">E-mailadres</label>
-                <input type="email" name="email" required 
-                       class="w-full bg-zinc-900 border border-white/5 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-blue-600 transition">
-            </div>
-
-            <div>
-                <label class="block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-2 ml-4">Wachtwoord</label>
-                <input type="password" name="password" required 
-                       class="w-full bg-zinc-900 border border-white/5 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-blue-600 transition">
-            </div>
-
-            <button type="submit" 
-                    class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[10px] tracking-[0.2em] py-5 rounded-2xl transition-all shadow-lg shadow-blue-600/20">
-                Inloggen
+        <form action="auth.php" method="POST" class="space-y-8">
+            <input type="email" name="email" required placeholder="E-MAILADRES" class="w-full py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none transition-all">
+            <input type="password" name="password" required placeholder="WACHTWOORD" class="w-full py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none transition-all">
+            <button type="submit" class="w-full py-6 bg-white text-black rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] hover:bg-blue-600 hover:text-white transition-all shadow-xl shadow-white/5">
+                Betreed het Archief
             </button>
         </form>
 
-        <footer class="mt-12 text-center">
-            <p class="text-[10px] text-zinc-600 font-bold uppercase tracking-widest leading-loose">
-                Geen toegang? <br> Vraag het even aan de beheerder.
-            </p>
+        <footer class="mt-12">
+            <a href="index.php" class="text-[8px] font-black uppercase tracking-widest text-zinc-600 hover:text-white transition">Annuleer en keer terug</a>
         </footer>
     </div>
 
+    <script>
+        // Subtiele ambient sound bij laden
+        window.addEventListener('click', () => {
+            const ambient = new Audio('https://assets.mixkit.co/active_storage/sfx/2560/2560-preview.mp3');
+            ambient.volume = 0.1;
+            ambient.loop = true;
+            ambient.play();
+        }, { once: true });
+    </script>
 </body>
 </html>

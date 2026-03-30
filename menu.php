@@ -1,205 +1,90 @@
 <?php
-/** * FORCEKES - menu.php (Fase 8: Verkenner & Portaal Edition) */
+/** * FORCEKES - menu.php (Fase 9: Ambient & Sound Engine) */
 require_once 'config.php';
-
-// Haal albums op voor de Verkenner (indien nog niet geladen in de hoofd-pagina)
-$navAlbumsRaw = supabaseRequest("rpc/get_album_dashboard", 'GET');
-$navAlbums = (is_array($navAlbumsRaw) && !isset($navAlbumsRaw['error'])) ? $navAlbumsRaw : [];
-if (!empty($navAlbums)) {
-    usort($navAlbums, function($a, $b) {
-        return strcmp((string)($a['category_name'] ?? ''), (string)($b['category_name'] ?? ''));
-    });
-}
-?>
-<style>
-    .glass-menu { background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
-    .explorer-panel { transform: translateX(100%); transition: transform 0.6s cubic-bezier(0.2, 1, 0.3, 1); }
-    .explorer-open .explorer-panel { transform: translateX(0); }
-    .explorer-overlay { opacity: 0; pointer-events: none; transition: opacity 0.6s ease; }
-    .explorer-open .explorer-overlay { opacity: 1; pointer-events: auto; }
-    .nav-link { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.2em; transition: all 0.3s ease; }
-    .nav-link:hover { color: #3b82f6; letter-spacing: 0.3em; }
-</style>
-
-<nav class="fixed top-0 left-0 right-0 z-[100] transition-all duration-500" id="main-nav">
-    <div class="max-w-7xl mx-auto px-8 py-6 flex justify-between items-center">
-        <a href="index.php" class="text-xl font-black italic tracking-tighter uppercase group flex items-center gap-2">
-            <span class="text-white">Force<span class="text-blue-600">kes</span></span>
-            <span class="text-[10px] font-light tracking-[0.4em] text-zinc-500 ml-2 group-hover:text-white transition-colors">Portaal</span>
-        </a>
-
-        <div class="hidden md:flex items-center space-x-12">
-            <a href="index.php" class="nav-link">Home</a>
-            <button onclick="toggleExplorer()" class="nav-link flex items-center gap-2 group">
-                Verkenner 
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="group-hover:translate-y-1 transition-transform">
-                    <path d="M6 9l6 6 6-6"/>
-                </svg>
-            </button>
-            <a href="zwaaikamer.php" class="nav-link italic">Zwaaikamer</a>
-            <a href="admin.php" class="px-6 py-2 bg-white text-black rounded-full text-[9px] font-black uppercase tracking-[0.2em] hover:bg-blue-600 hover:text-white transition-all shadow-xl shadow-white/5">Beheer</a>
-        </div>
-
-        <button onclick="toggleMobileMenu()" class="md:hidden p-2 text-white">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-        </button>
-    </div>
-</nav>
-
-<div id="explorer-overlay" onclick="toggleExplorer()" class="explorer-overlay fixed inset-0 bg-black/80 backdrop-blur-sm z-[110]"></div>
-<aside id="explorer-panel" class="explorer-panel fixed top-0 right-0 bottom-0 w-full max-w-sm bg-zinc-950 border-l border-white/10 z-[120] p-12 overflow-y-auto">
-    <div class="flex justify-between items-center mb-16">
-        <h3 class="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500 italic">De Albums</h3>
-        <button onclick="toggleExplorer()" class="text-zinc-500 hover:text-white transition">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-        </button>
-    </div>
-
-    <nav class="space-y-6">
-        <?php foreach ($navAlbums as $album): 
-            $slug = (string)($album['category_name'] ?? '');
-            if (empty($slug)) continue;
-        ?>
-            <a href="gallery.php?page=<?= rawurlencode($slug) ?>" class="group block">
-                <span class="text-[8px] font-black text-zinc-600 uppercase tracking-widest block mb-1"><?= (int)($album['photo_count'] ?? 0) ?> items</span>
-                <span class="text-xl font-black uppercase tracking-tighter group-hover:text-blue-600 transition-colors italic"><?= strtoupper($slug) ?></span>
-            </a>
-        <?php endforeach; ?>
-    </nav>
-</aside>
-
-<div id="mobile-menu" class="fixed inset-0 bg-black/98 backdrop-blur-3xl translate-x-full transition-transform duration-500 md:hidden flex flex-col items-center justify-center space-y-10 z-[130]">
-    <button onclick="toggleMobileMenu()" class="absolute top-8 right-8 text-white/50"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
-    <a href="in<?php
-/** * FORCEKES - menu.php (Fase 8: Navigatie & Auth Herstel) */
-require_once 'config.php';
-
-// 1. AUTH CHECK
 $userEmail = isset($_SESSION['user_email']) ? strtolower($_SESSION['user_email']) : '';
 $isLoggedIn = !empty($userEmail);
 $isAdmin = ($userEmail === 'koen@lauwe.com');
 
-// 2. DATA VOOR VERKENNER
 $navAlbumsRaw = supabaseRequest("rpc/get_album_dashboard", 'GET');
 $navAlbums = (is_array($navAlbumsRaw) && !isset($navAlbumsRaw['error'])) ? $navAlbumsRaw : [];
-if (!empty($navAlbums)) {
-    usort($navAlbums, function($a, $b) {
-        return strcmp((string)($a['category_name'] ?? ''), (string)($b['category_name'] ?? ''));
-    });
-}
 ?>
 <style>
-    .glass-nav { background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
-    .explorer-panel { transform: translateX(100%); transition: transform 0.6s cubic-bezier(0.2, 1, 0.3, 1); background: #050505; }
+    /* Ambient Glow Layer */
+    #ambient-glow {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.05) 0%, transparent 70%);
+        pointer-events: none;
+        z-index: -1;
+        transition: background 2s ease;
+    }
+    .glass-nav { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(30px); border-bottom: 1px solid rgba(255, 255, 255, 0.03); }
+    .nav-link { font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.3em; transition: all 0.4s ease; color: rgba(255,255,255,0.4); }
+    .nav-link:hover { color: #fff; letter-spacing: 0.4em; }
+    .explorer-panel { transform: translateX(100%); transition: transform 0.8s cubic-bezier(0.2, 1, 0.3, 1); background: #020202; }
     .explorer-open .explorer-panel { transform: translateX(0); }
-    .explorer-overlay { opacity: 0; pointer-events: none; transition: opacity 0.6s ease; }
-    .explorer-open .explorer-overlay { opacity: 1; pointer-events: auto; }
-    .nav-link { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.2em; transition: all 0.3s ease; color: rgba(255,255,255,0.6); }
-    .nav-link:hover { color: #fff; letter-spacing: 0.3em; }
-    .serif-italic { font-family: 'Playfair Display', serif; font-style: italic; }
 </style>
 
-<nav class="fixed top-0 left-0 right-0 z-[100] transition-all duration-500" id="main-nav">
-    <div class="max-w-7xl mx-auto px-8 py-6 flex justify-between items-center">
-        <a href="index.php" class="text-xl font-black italic tracking-tighter uppercase group flex flex-col">
-            <span class="text-white">Force<span class="text-blue-600">kes</span></span>
-            <span class="text-[8px] font-black tracking-[0.4em] text-zinc-500 group-hover:text-white transition-colors">Portaal</span>
+<div id="ambient-glow"></div>
+
+<nav class="fixed top-0 left-0 right-0 z-[100] transition-all duration-700" id="main-nav">
+    <div class="max-w-7xl mx-auto px-10 py-8 flex justify-between items-center">
+        <a href="index.php" class="group flex flex-col" onclick="playSound('click')">
+            <span class="text-xl font-black italic uppercase tracking-tighter leading-none">Force<span class="text-blue-600">kes</span></span>
+            <span class="text-[8px] font-black uppercase tracking-[0.5em] text-zinc-600 group-hover:text-blue-500 transition-colors">Portaal</span>
         </a>
 
-        <div class="hidden md:flex items-center space-x-10">
-            <a href="index.php" class="nav-link">Home</a>
-            <a href="zwaaikamer.php" class="nav-link italic">Zwaaikamer</a>
+        <div class="hidden md:flex items-center space-x-12">
+            <a href="index.php" class="nav-link" onclick="playSound('click')">Home</a>
+            <a href="zwaaikamer.php" class="nav-link italic" onclick="playSound('click')">Zwaaikamer</a>
+            <button onclick="toggleExplorer(); playSound('ui-open');" class="nav-link flex items-center gap-2">Verkenner</button>
             
-            <button onclick="toggleExplorer()" class="nav-link flex items-center gap-2 group">
-                Verkenner 
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" class="group-hover:translate-y-1 transition-transform"><path d="M6 9l6 6 6-6"/></svg>
-            </button>
-
-            <div class="h-4 w-px bg-white/10 mx-2"></div>
-
-            <?php if ($isAdmin): ?>
-                <a href="admin.php" class="nav-link text-blue-500">Beheer</a>
-            <?php endif; ?>
-
             <?php if ($isLoggedIn): ?>
-                <a href="logout.php" class="px-5 py-2 border border-white/10 rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all">Logout</a>
+                <a href="logout.php" class="nav-link text-red-900/50 hover:text-red-500" onclick="playSound('click')">Exit</a>
             <?php else: ?>
-                <a href="login.php" class="px-5 py-2 bg-white text-black rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-xl shadow-white/5">Login</a>
+                <a href="login.php" class="px-8 py-3 bg-white text-black rounded-full text-[9px] font-black uppercase tracking-[0.3em] hover:bg-blue-600 hover:text-white transition-all">Toegang</a>
             <?php endif; ?>
         </div>
-
-        <button onclick="toggleMobileMenu()" class="md:hidden text-white">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-        </button>
     </div>
 </nav>
 
-<div id="explorer-overlay" onclick="toggleExplorer()" class="explorer-overlay fixed inset-0 bg-black/80 backdrop-blur-sm z-[110]"></div>
-<aside id="explorer-panel" class="explorer-panel fixed top-0 right-0 bottom-0 w-full max-w-sm border-l border-white/5 z-[120] p-12 overflow-y-auto">
-    <div class="flex justify-between items-center mb-16">
-        <h3 class="text-[9px] font-black uppercase tracking-[0.5em] text-blue-500 italic">De Albums</h3>
-        <button onclick="toggleExplorer()" class="text-zinc-600 hover:text-white transition">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-        </button>
-    </div>
-
-    <nav class="space-y-8">
-        <?php foreach ($navAlbums as $album): 
-            $slug = (string)($album['category_name'] ?? '');
-            if (empty($slug)) continue;
-        ?>
-            <a href="gallery.php?page=<?= rawurlencode($slug) ?>" class="group block border-b border-white/5 pb-4">
-                <span class="text-[8px] font-black text-zinc-600 uppercase tracking-widest block mb-1"><?= (int)($album['photo_count'] ?? 0) ?> items</span>
-                <span class="text-2xl font-black uppercase tracking-tighter group-hover:text-blue-600 transition-colors italic"><?= strtoupper($slug) ?></span>
+<aside id="explorer-panel" class="explorer-panel fixed top-0 right-0 bottom-0 w-full max-w-sm border-l border-white/5 z-[120] p-16 overflow-y-auto shadow-2xl">
+    <header class="mb-20 flex justify-between items-center">
+        <p class="text-[9px] font-black uppercase tracking-[0.4em] text-blue-600">Archief</p>
+        <button onclick="toggleExplorer(); playSound('ui-close');" class="text-zinc-600 hover:text-white"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+    </header>
+    <nav class="space-y-10">
+        <?php foreach ($navAlbums as $album): ?>
+            <a href="gallery.php?page=<?= rawurlencode($album['category_name']) ?>" class="group block border-b border-white/5 pb-6" onclick="playSound('click')">
+                <span class="text-[20px] font-black uppercase italic group-hover:text-blue-500 transition-all block"><?= $album['category_name'] ?></span>
             </a>
         <?php endforeach; ?>
     </nav>
 </aside>
 
-<div id="mobile-menu" class="fixed inset-0 bg-black/98 backdrop-blur-3xl translate-x-full transition-transform duration-500 md:hidden flex flex-col items-center justify-center space-y-8 z-[130]">
-    <button onclick="toggleMobileMenu()" class="absolute top-8 right-8 text-white/50"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
-    <a href="index.php" class="text-2xl font-black uppercase italic tracking-widest">Home</a>
-    <a href="zwaaikamer.php" class="text-2xl font-black uppercase italic tracking-widest">Zwaaikamer</a>
-    <button onclick="toggleExplorer(); toggleMobileMenu();" class="text-2xl font-black uppercase italic tracking-widest text-blue-600">Verkenner</button>
-    <div class="h-px w-20 bg-white/10 my-4"></div>
-    <?php if ($isAdmin): ?>
-        <a href="admin.php" class="text-xl font-black uppercase italic tracking-widest">Beheer</a>
-    <?php endif; ?>
-    <?php if ($isLoggedIn): ?>
-        <a href="logout.php" class="text-xl font-black uppercase italic tracking-widest text-red-500">Logout</a>
-    <?php else: ?>
-        <a href="login.php" class="text-xl font-black uppercase italic tracking-widest">Login</a>
-    <?php endif; ?>
-</div>
-
 <script>
+    const sounds = {
+        'click': new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3'), // Kristallen tik
+        'ui-open': new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'), // Zachte woosh
+        'ui-close': new Audio('https://assets.mixkit.co/active_storage/sfx/2569/2569-preview.mp3')
+    };
+
+    function playSound(name) {
+        const s = sounds[name].cloneNode();
+        s.volume = 0.2;
+        s.play();
+    }
+
     function toggleExplorer() { document.body.classList.toggle('explorer-open'); }
-    function toggleMobileMenu() { document.getElementById('mobile-menu').classList.toggle('translate-x-full'); }
+
+    // Ambient Mirror Logic
+    function updateAmbientGlow(color = 'rgba(59, 130, 246, 0.05)') {
+        document.getElementById('ambient-glow').style.background = `radial-gradient(circle at 50% 50%, ${color} 0%, transparent 70%)`;
+    }
+
     window.addEventListener('scroll', () => {
         const n = document.getElementById('main-nav');
         if (window.scrollY > 20) n.classList.add('glass-nav', 'py-4');
         else n.classList.remove('glass-nav', 'py-4');
-    });
-</script>dex.php" class="text-3xl font-black uppercase italic tracking-widest">Home</a>
-    <button onclick="toggleExplorer(); toggleMobileMenu();" class="text-3xl font-black uppercase italic tracking-widest text-blue-600">Verkenner</button>
-    <a href="zwaaikamer.php" class="text-3xl font-black uppercase italic tracking-widest">Zwaaikamer</a>
-    <a href="admin.php" class="text-3xl font-black uppercase italic tracking-widest">Beheer</a>
-</div>
-
-<script>
-    const nav = document.getElementById('main-nav');
-    const body = document.body;
-
-    function toggleExplorer() {
-        body.classList.toggle('explorer-open');
-    }
-
-    function toggleMobileMenu() {
-        document.getElementById('mobile-menu').classList.toggle('translate-x-full');
-    }
-
-    window.addEventListener('scroll', () => {
-        if (window.scrollY > 20) nav.classList.add('glass-menu', 'py-4');
-        else nav.classList.remove('glass-menu', 'py-4');
     });
 </script>
