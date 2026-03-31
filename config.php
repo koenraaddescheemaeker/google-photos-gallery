@@ -1,10 +1,8 @@
 <?php
 /** * FORCEKES - config.php (De Fundering) */
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
-
 define('SUPABASE_URL', 'https://supa.forcekes.be'); 
-define('SUPABASE_SERVICE_KEY', 'JOUW_SERVICE_ROLE_KEY_HIER'); // PLAK HIER JE KEY UIT SUPABASE DASHBOARD
-
+define('SUPABASE_SERVICE_KEY', 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc3MzQ4MzM2MCwiZXhwIjo0OTI5MTU2OTYwLCJyb2xlIjoiYW5vbiJ9.LXIJo7fsXhJIQ'); // PLAK HIER JE KEY UIT SUPABASE DASHBOARD
 function supabaseRequest($endpoint, $method = 'GET', $data = null) {
     $url = SUPABASE_URL . '/rest/v1/' . $endpoint;
     $ch = curl_init($url);
