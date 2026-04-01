@@ -1,5 +1,5 @@
 <?php
-/** * FORCEKES - menu.php (Fase 11: Error-Proof Navigatie) */
+/** * FORCEKES - menu.php (Gekeurd door Manu) */
 require_once 'config.php';
 
 $userEmail = isset($_SESSION['user_email']) ? strtolower($_SESSION['user_email']) : '';
@@ -7,9 +7,7 @@ $isLoggedIn = !empty($userEmail);
 $isAdmin = ($userEmail === 'koen@lauwe.com');
 
 $navRaw = supabaseRequest("rpc/get_album_dashboard", 'GET');
-
-// CONTROLE: Is dit een echte lijst met records?
-$navAlbums = (is_array($navRaw) && !isset($navRaw['error']) && array_is_list($navRaw)) ? $navRaw : [];
+$navAlbums = (is_array($navRaw) && !isset($navRaw['error'])) ? $navRaw : [];
 
 $visibleNav = array_filter($navAlbums, function($a) { return ($a['is_visible'] ?? true) == true; });
 usort($visibleNav, function($a, $b) {
@@ -49,16 +47,12 @@ usort($visibleNav, function($a, $b) {
         <button onclick="toggleExplorer()" class="text-zinc-600 hover:text-white"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
     </header>
     <nav class="space-y-10">
-        <?php if (empty($visibleNav)): ?>
-            <p class="text-[10px] uppercase tracking-widest text-zinc-700 italic">Geen albums beschikbaar</p>
-        <?php else: ?>
-            <?php foreach ($visibleNav as $album): ?>
-                <a href="gallery.php?page=<?= rawurlencode($album['category_name']) ?>" class="group block border-b border-white/5 pb-6">
-                    <span class="text-[8px] font-black text-zinc-600 uppercase tracking-widest block mb-2"><?= (int)$album['photo_count'] ?> items</span>
-                    <span class="serif-italic text-2xl group-hover:text-blue-500 transition-all block italic"><?= ucfirst($album['category_name']) ?></span>
-                </a>
-            <?php endforeach; ?>
-        <?php endif; ?>
+        <?php foreach ($visibleNav as $album): ?>
+            <a href="gallery.php?page=<?= rawurlencode($album['category_name']) ?>" class="group block border-b border-white/5 pb-6">
+                <span class="text-[8px] font-black text-zinc-600 uppercase tracking-widest block mb-2"><?= (int)$album['photo_count'] ?> items</span>
+                <span class="serif-italic text-2xl group-hover:text-blue-500 transition-all block italic"><?= ucfirst($album['category_name']) ?></span>
+            </a>
+        <?php endforeach; ?>
     </nav>
 </aside>
 
@@ -66,7 +60,7 @@ usort($visibleNav, function($a, $b) {
     function toggleExplorer() { document.body.classList.toggle('explorer-open'); }
     window.addEventListener('scroll', () => {
         const n = document.getElementById('main-nav');
-        if (window.scrollY > 20) n.classList.add('glass-nav', 'py-4');
-        else n.classList.remove('glass-nav', 'py-4');
+        if (n && window.scrollY > 20) n.classList.add('glass-nav', 'py-4');
+        else if (n) n.classList.remove('glass-nav', 'py-4');
     });
 </script>
