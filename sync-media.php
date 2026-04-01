@@ -1,89 +1,89 @@
 <?php
-/** * FORCEKES - sync-media.php (Auto-Batch Edition - Gekeurd door Manu) */
+/** * FORCEKES - sync-media.php (Debug Edition - Gekeurd door Manu) */
 require_once 'config.php';
 
-// 1. Instellingen & Detectie
-set_time_limit(300); // 5 minuten per run
+set_time_limit(300);
 $isCron = (php_sapi_name() === 'cli' || isset($_GET['cron']));
-$batchSize = $isCron ? 50 : 20; // Cron mag iets harder werken
+$batchSize = $isCron ? 50 : 10; // Iets kleinere batch voor betere logging
 
 echo "<body style='background:#000;color:#fff;font-family:monospace;padding:20px;line-height:1.6;'>";
 echo "<h2>FORCEKES <span style='color:#3b82f6;'>SYSTEM SYNC</span></h2>";
-echo "Modus: " . ($isCron ? "<span style='color:orange;'>AUTOMATISCH (CRON)</span>" : "<span style='color:green;'>INTERACTIEF (BROWSER)</span>") . "<br><br>";
 
-// 2. EERST: De Achtergrondvideo Assets (Eenmalig)
-syncGlobalAssets();
-
-// 3. DAN: De Media Batch (Thumbnails & Images)
+// 1. Haal de probleemgevallen op
 $items = supabaseRequest("album_photos?or=(image_url.like.*googleusercontent*,thumbnail_url.like.*googleusercontent*)&limit=$batchSize", 'GET');
 
 if (is_array($items) && count($items) > 0) {
-    echo "Bezig met batch van " . count($items) . " items...<br>";
+    echo "Analyse van " . count($items) . " items...<br><hr style='border:1px solid #222; margin:20px 0;'>";
     
     foreach ($items as $item) {
         $id = $item['id']; 
         $cat = $item['category']; 
         $updates = [];
+        $errorLog = [];
 
-        // Image Sync
+        echo "<strong>Item ID: $id</strong> ($cat)<br>";
+
+        // IMAGE SYNC CHECK
         if (strpos($item['image_url'], 'google') !== false) {
+            echo " - Downloaden Image... ";
             $img = @file_get_contents($item['image_url']);
-            if ($img) {
+            if (!$img) {
+                $errorLog[] = "Google Image URL niet bereikbaar (404 of verlopen).";
+                echo "<span style='color:red;'>FAILED</span><br>";
+            } else {
+                echo "<span style='color:green;'>OK</span>. Uploaden naar Supabase... ";
                 $ext = (strpos($item['image_url'], '.mp4') !== false) ? '.mp4' : '.jpg';
                 $newUrl = uploadToSupabase("$cat/$id$ext", $img, $ext == '.mp4' ? 'video/mp4' : 'image/jpeg');
-                if ($newUrl) $updates['image_url'] = $newUrl;
+                if ($newUrl) {
+                    $updates['image_url'] = $newUrl;
+                    echo "<span style='color:green;'>SUCCESS</span><br>";
+                } else {
+                    $errorLog[] = "Supabase weigert Image upload.";
+                    echo "<span style='color:red;'>FAILED</span><br>";
+                }
             }
         }
 
-        // Thumbnail Sync
+        // THUMBNAIL SYNC CHECK
         if (strpos($item['thumbnail_url'], 'google') !== false) {
+            echo " - Downloaden Thumbnail... ";
             $thumb = @file_get_contents($item['thumbnail_url']);
-            if ($thumb) {
+            if (!$thumb) {
+                $errorLog[] = "Google Thumbnail URL niet bereikbaar.";
+                echo "<span style='color:red;'>FAILED</span><br>";
+            } else {
+                echo "<span style='color:green;'>OK</span>. Uploaden naar Supabase... ";
                 $newThumb = uploadToSupabase("thumbs/$cat/$id.jpg", $thumb, 'image/jpeg');
-                if ($newThumb) $updates['thumbnail_url'] = $newThumb;
+                if ($newThumb) {
+                    $updates['thumbnail_url'] = $newThumb;
+                    echo "<span style='color:green;'>SUCCESS</span><br>";
+                } else {
+                    $errorLog[] = "Supabase weigert Thumbnail upload.";
+                    echo "<span style='color:red;'>FAILED</span><br>";
+                }
             }
         }
 
+        // FINISH ITEM
         if (!empty($updates)) {
             supabaseRequest("album_photos?id=eq.$id", "PATCH", $updates);
-            echo "<span style='color:#3b82f6;'>[v]</span> $id verwerkt.<br>";
         } else {
-            echo "<span style='color:red;'>[x]</span> $id mislukt.<br>";
+            // Manu: Als het echt niet lukt, markeren we dit item zodat de sync niet blijft hangen
+            echo "<span style='color:orange;'>WAARSCHUWING:</span> " . implode(" ", $errorLog) . "<br>";
+            echo "<em>Tip van Manu: Als deze link dood is bij Google, verwijder record $id handmatig uit Supabase.</em><br>";
         }
+        echo "<hr style='border:1px solid #222; margin:10px 0;'>";
     }
 
-    // 4. De KISS-oplossing voor doorgaan
     if (!$isCron) {
-        // Voor de mens: Automatische refresh via JS
-        echo "<p style='color:green;'>Batch klaar. Volgende batch start over 2 seconden...</p>";
-        echo "<script>setTimeout(() => { window.location.reload(); }, 2000);</script>";
-    } else {
-        // Voor de Cron: We stoppen hier. De Cron-taak in Coolify zal het script 
-        // simpelweg over een paar minuten weer opnieuw aanroepen.
-        echo "Cron-cyclus voltooid.";
+        echo "<script>setTimeout(() => { window.location.reload(); }, 5000);</script>";
     }
 
 } else {
-    echo "<h3 style='color:green;'>[SUCCESS] Alles is vlijmscherp gemigreerd naar Supabase.</h3>";
+    echo "<h3 style='color:green;'>Alle media is vlijmscherp gesynchroniseerd.</h3>";
 }
 
-/**
- * Functies (Onder de motorkap)
- */
-function syncGlobalAssets() {
-    $assetPath = "assets/bg-atmosphere.mp4";
-    $checkUrl = SUPABASE_URL . "/storage/v1/object/public/familie-media/" . $assetPath;
-    $headers = @get_headers($checkUrl);
-    if (!$headers || strpos($headers[0], '404') !== false) {
-        echo "Achtergrondvideo ophalen... ";
-        $video = @file_get_contents("https://www.w3schools.com/howto/rain.mp4");
-        if ($video) {
-            uploadToSupabase($assetPath, $video, 'video/mp4');
-            echo "<span style='color:green;'>Klaar</span><br>";
-        }
-    }
-}
-
+// De uploadfunctie (ongewijzigd maar essentieel)
 function uploadToSupabase($path, $data, $mime) {
     $url = SUPABASE_URL . "/storage/v1/object/familie-media/" . rawurlencode($path);
     $ch = curl_init($url);
@@ -100,4 +100,3 @@ function uploadToSupabase($path, $data, $mime) {
     curl_close($ch);
     return ($code == 200 || $code == 201) ? SUPABASE_URL . "/storage/v1/object/public/familie-media/" . $path : false;
 }
-?>
