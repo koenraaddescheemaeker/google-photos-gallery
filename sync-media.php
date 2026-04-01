@@ -1,53 +1,57 @@
 <?php
-/** * FORCEKES - sync-media.php (De Grote Thumbnail Migratie) */
+/** * FORCEKES - sync-media.php (Inclusief Asset Sync) */
 require_once 'config.php';
-set_time_limit(36000); // Geef de uil de tijd
+set_time_limit(3600);
 
 echo "<body style='background:#000;color:#fff;font-family:monospace;padding:40px;'>";
-echo "<h2>FORCEKES <span style='color:#3b82f6;'>MEDIA SYNC</span></h2>";
+echo "<h2>FORCEKES <span style='color:#3b82f6;'>SYSTEM SYNC</span></h2>";
 
-// Zoek items waar image of thumbnail nog naar Google wijst
+// 1. ACHTERGROND VIDEO SYNC (KISS: Slechts één keer nodig)
+$assetPath = "assets/bg-atmosphere.mp4";
+$checkUrl = SUPABASE_URL . "/storage/v1/object/public/familie-media/" . $assetPath;
+$file_headers = @get_headers($checkUrl);
+
+if(!$file_headers || $file_headers[0] == 'HTTP/1.1 404 Not Found') {
+    echo "Achtergrondvideo ontbreekt. Bezig met binnenhalen... ";
+    $videoData = file_get_contents("https://www.w3schools.com/howto/rain.mp4");
+    if($videoData) {
+        uploadToSupabase($assetPath, $videoData, 'video/mp4');
+        echo "<span style='color:green;'>OK</span><br>";
+    }
+} else {
+    echo "Achtergrondvideo is reeds aanwezig in bucket.<br>";
+}
+
+// 2. THUMBNAIL & IMAGE SYNC (De rest van je media)
 $items = supabaseRequest("album_photos?or=(image_url.like.*googleusercontent*,thumbnail_url.like.*googleusercontent*)&limit=20", 'GET');
-
 if (is_array($items) && count($items) > 0) {
     foreach ($items as $item) {
-        $id = $item['id'];
-        $cat = $item['category'];
-        $updates = [];
-
-        echo "Verwerken: $id ($cat)... ";
-
-        // 1. Image Sync
-        if (strpos($item['image_url'], 'googleusercontent') !== false) {
+        $id = $item['id']; $cat = $item['category']; $updates = [];
+        echo "Syncing: $id... ";
+        
+        if (strpos($item['image_url'], 'google') !== false) {
             $img = file_get_contents($item['image_url']);
-            if ($img) {
+            if($img) {
                 $ext = (strpos($item['image_url'], '.mp4') !== false) ? '.mp4' : '.jpg';
-                $path = $cat . "/" . $id . $ext;
-                $newUrl = uploadToSupabase($path, $img, $ext == '.mp4' ? 'video/mp4' : 'image/jpeg');
-                if ($newUrl) $updates['image_url'] = $newUrl;
+                $newUrl = uploadToSupabase("$cat/$id$ext", $img, $ext == '.mp4' ? 'video/mp4' : 'image/jpeg');
+                if($newUrl) $updates['image_url'] = $newUrl;
             }
         }
-
-        // 2. Thumbnail Sync (KISS: We slaan ze op in een submap /thumbs)
-        if (strpos($item['thumbnail_url'], 'googleusercontent') !== false) {
+        
+        if (strpos($item['thumbnail_url'], 'google') !== false) {
             $thumb = file_get_contents($item['thumbnail_url']);
-            if ($thumb) {
-                $thumbPath = "thumbs/" . $cat . "/" . $id . ".jpg";
-                $newThumb = uploadToSupabase($thumbPath, $thumb, 'image/jpeg');
-                if ($newThumb) $updates['thumbnail_url'] = $newThumb;
+            if($thumb) {
+                $newThumb = uploadToSupabase("thumbs/$cat/$id.jpg", $thumb, 'image/jpeg');
+                if($newThumb) $updates['thumbnail_url'] = $newThumb;
             }
         }
 
-        if (!empty($updates)) {
+        if(!empty($updates)) {
             supabaseRequest("album_photos?id=eq.$id", "PATCH", $updates);
-            echo "<span style='color:#3b82f6;'>SUCCESS</span><br>";
-        } else {
-            echo "<span style='color:red;'>FAILED</span><br>";
+            echo "DONE<br>";
         }
     }
-    echo "<p>Batch voltooid. <a href='sync-media.php' style='color:#3b82f6;'>Klik hier voor de volgende 20</a></p>";
-} else {
-    echo "<h3 style='color:green;'>Alles is gemigreerd! Het archief is 100% onafhankelijk.</h3>";
+    echo "<p><a href='sync-media.php' style='color:#3b82f6;'>Volgende batch...</a></p>";
 }
 
 function uploadToSupabase($path, $data, $mime) {
