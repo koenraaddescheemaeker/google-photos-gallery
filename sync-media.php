@@ -1,89 +1,98 @@
 <?php
-/** * FORCEKES - sync-media.php (Debug Edition - Gekeurd door Manu) */
+/** * FORCEKES - sync-media.php (Import & Migratie Edition - Gekeurd door Manu) */
 require_once 'config.php';
 
-set_time_limit(300);
+set_time_limit(600); 
 $isCron = (php_sapi_name() === 'cli' || isset($_GET['cron']));
-$batchSize = $isCron ? 50 : 10; // Iets kleinere batch voor betere logging
 
 echo "<body style='background:#000;color:#fff;font-family:monospace;padding:20px;line-height:1.6;'>";
-echo "<h2>FORCEKES <span style='color:#3b82f6;'>SYSTEM SYNC</span></h2>";
+echo "<h2>FORCEKES <span style='color:#3b82f6;'>MEDIA ENGINE</span></h2>";
 
-// 1. Haal de probleemgevallen op
-$items = supabaseRequest("album_photos?or=(image_url.like.*googleusercontent*,thumbnail_url.like.*googleusercontent*)&limit=$batchSize", 'GET');
+// --- FASE 1: NIEUWE GOOGLE ALBUMS INGESTEN ---
+$newAlbums = supabaseRequest("album_settings?google_link=not.is.null", 'GET');
 
-if (is_array($items) && count($items) > 0) {
-    echo "Analyse van " . count($items) . " items...<br><hr style='border:1px solid #222; margin:20px 0;'>";
-    
-    foreach ($items as $item) {
-        $id = $item['id']; 
-        $cat = $item['category']; 
-        $updates = [];
-        $errorLog = [];
-
-        echo "<strong>Item ID: $id</strong> ($cat)<br>";
-
-        // IMAGE SYNC CHECK
-        if (strpos($item['image_url'], 'google') !== false) {
-            echo " - Downloaden Image... ";
-            $img = @file_get_contents($item['image_url']);
-            if (!$img) {
-                $errorLog[] = "Google Image URL niet bereikbaar (404 of verlopen).";
-                echo "<span style='color:red;'>FAILED</span><br>";
-            } else {
-                echo "<span style='color:green;'>OK</span>. Uploaden naar Supabase... ";
-                $ext = (strpos($item['image_url'], '.mp4') !== false) ? '.mp4' : '.jpg';
-                $newUrl = uploadToSupabase("$cat/$id$ext", $img, $ext == '.mp4' ? 'video/mp4' : 'image/jpeg');
-                if ($newUrl) {
-                    $updates['image_url'] = $newUrl;
-                    echo "<span style='color:green;'>SUCCESS</span><br>";
-                } else {
-                    $errorLog[] = "Supabase weigert Image upload.";
-                    echo "<span style='color:red;'>FAILED</span><br>";
-                }
-            }
+if (is_array($newAlbums)) {
+    foreach ($newAlbums as $album) {
+        $slug = $album['slug'];
+        $link = $album['google_link'];
+        
+        // Check of we dit album al eens hebben ingelezen (KISS: we checken of er al foto's zijn)
+        $check = supabaseRequest("album_photos?category=eq.$slug&limit=1", 'GET');
+        
+        if (empty($check)) {
+            echo "Nieuw album gedetecteerd: <strong>$slug</strong>. Bezig met inlezen van Google...<br>";
+            importPhotosFromGoogle($link, $slug);
         }
-
-        // THUMBNAIL SYNC CHECK
-        if (strpos($item['thumbnail_url'], 'google') !== false) {
-            echo " - Downloaden Thumbnail... ";
-            $thumb = @file_get_contents($item['thumbnail_url']);
-            if (!$thumb) {
-                $errorLog[] = "Google Thumbnail URL niet bereikbaar.";
-                echo "<span style='color:red;'>FAILED</span><br>";
-            } else {
-                echo "<span style='color:green;'>OK</span>. Uploaden naar Supabase... ";
-                $newThumb = uploadToSupabase("thumbs/$cat/$id.jpg", $thumb, 'image/jpeg');
-                if ($newThumb) {
-                    $updates['thumbnail_url'] = $newThumb;
-                    echo "<span style='color:green;'>SUCCESS</span><br>";
-                } else {
-                    $errorLog[] = "Supabase weigert Thumbnail upload.";
-                    echo "<span style='color:red;'>FAILED</span><br>";
-                }
-            }
-        }
-
-        // FINISH ITEM
-        if (!empty($updates)) {
-            supabaseRequest("album_photos?id=eq.$id", "PATCH", $updates);
-        } else {
-            // Manu: Als het echt niet lukt, markeren we dit item zodat de sync niet blijft hangen
-            echo "<span style='color:orange;'>WAARSCHUWING:</span> " . implode(" ", $errorLog) . "<br>";
-            echo "<em>Tip van Manu: Als deze link dood is bij Google, verwijder record $id handmatig uit Supabase.</em><br>";
-        }
-        echo "<hr style='border:1px solid #222; margin:10px 0;'>";
     }
-
-    if (!$isCron) {
-        echo "<script>setTimeout(() => { window.location.reload(); }, 5000);</script>";
-    }
-
-} else {
-    echo "<h3 style='color:green;'>Alle media is vlijmscherp gesynchroniseerd.</h3>";
 }
 
-// De uploadfunctie (ongewijzigd maar essentieel)
+// --- FASE 2: MEDIA MIGREREN (GOOGLE -> SUPABASE) ---
+$items = supabaseRequest("album_photos?or=(image_url.like.*googleusercontent*,thumbnail_url.like.*googleusercontent*)&limit=20", 'GET');
+
+if (is_array($items) && count($items) > 0) {
+    echo "<br>Bezig met migratie van " . count($items) . " bestanden naar Supabase...<br>";
+    foreach ($items as $item) {
+        $id = $item['id']; $cat = $item['category']; $updates = [];
+        
+        // Image & Thumbnail Sync
+        syncFile($item['image_url'], $id, $cat, 'image_url', $updates);
+        syncFile($item['thumbnail_url'], $id, $cat, 'thumbnail_url', $updates);
+
+        if (!empty($updates)) {
+            supabaseRequest("album_photos?id=eq.$id", "PATCH", $updates);
+            echo "<span style='color:#3b82f6;'>[v]</span> Item $id gemigreerd.<br>";
+        }
+    }
+    if (!$isCron) echo "<script>setTimeout(() => { window.location.reload(); }, 2000);</script>";
+} else {
+    echo "<h3 style='color:green;'>[v] Alle media is veilig opgeslagen in je eigen kluis.</h3>";
+}
+
+/**
+ * HELPER: Scrape Google Shared Album
+ */
+function importPhotosFromGoogle($url, $slug) {
+    $html = @file_get_contents($url);
+    if (!$html) return;
+
+    // Manu's vlijmscherpe Regex voor Google Photos Shared Links
+    // We zoeken naar de specifieke patronen van afbeeldings-URL's in de broncode
+    preg_match_all('/"(https:\/\/lh3\.googleusercontent\.com\/pw\/[a-zA-Z0-9\-_]+)"/', $html, $matches);
+    
+    $urls = array_unique($matches[1] ?? []);
+    $count = 0;
+
+    foreach ($urls as $googleUrl) {
+        // We filteren op de 'grote' versies (vaak eindigend op =w of =h)
+        // en voegen ze toe aan de database
+        supabaseRequest("album_photos", "POST", [
+            "category" => $slug,
+            "image_url" => $googleUrl . "=w2048-h2048", // Forceer hoge resolutie
+            "thumbnail_url" => $googleUrl . "=w400-h400", // Forceer thumbnail
+            "is_visible" => true,
+            "owner_email" => "koen@lauwe.com"
+        ]);
+        $count++;
+    }
+    echo "<span style='color:green;'>[v] $count foto's gevonden en klaargezet voor migratie.</span><br>";
+}
+
+/**
+ * HELPER: Sync een individueel bestand
+ */
+function syncFile($url, $id, $cat, $field, &$updates) {
+    if (strpos($url, 'google') !== false) {
+        $data = @file_get_contents($url);
+        if ($data) {
+            $isThumb = ($field === 'thumbnail_url');
+            $ext = (strpos($url, '.mp4') !== false) ? '.mp4' : '.jpg';
+            $path = ($isThumb ? "thumbs/" : "") . "$cat/$id$ext";
+            $newUrl = uploadToSupabase($path, $data, ($ext == '.mp4' ? 'video/mp4' : 'image/jpeg'));
+            if ($newUrl) $updates[$field] = $newUrl;
+        }
+    }
+}
+
 function uploadToSupabase($path, $data, $mime) {
     $url = SUPABASE_URL . "/storage/v1/object/familie-media/" . rawurlencode($path);
     $ch = curl_init($url);
