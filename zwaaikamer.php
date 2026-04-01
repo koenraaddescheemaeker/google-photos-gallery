@@ -1,5 +1,5 @@
 <?php
-/** * FORCEKES - zwaaikamer.php (Direct Jitsi Embed) */
+/** * FORCEKES - zwaaikamer.php (Compact Edition - Gekeurd door Manu) */
 require_once 'config.php';
 $jitsiUrl = "https://jitsi.riot.im/zwaaikamer#config.toolbarButtons=[%22microphone%22,%22camera%22,%22desktop%22,%22chat%22,%22raisehand%22,%22participants-pane%22,%22tileview%22,%22hangup%22,%22settings%22]";
 ?>
@@ -10,17 +10,19 @@ $jitsiUrl = "https://jitsi.riot.im/zwaaikamer#config.toolbarButtons=[%22micropho
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background: #000; overflow: hidden; }
-        .jitsi-frame { width: 100%; height: calc(100vh - 100px); border: none; border-radius: 2rem; }
+        .jitsi-frame { width: 100%; height: calc(100vh - 100px); border: none; border-radius: 1.5rem; }
     </style>
 </head>
 <body class="bg-black">
     <?php include 'menu.php'; ?>
-    <main class="pt-32 px-6 h-screen flex flex-col">
-        <header class="mb-6 flex justify-between items-center px-4">
-            <h1 style="font-family:'Playfair Display', serif;" class="text-3xl italic text-white">De Zwaaikamer</h1>
-            <div class="flex items-center gap-2">
-                <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                <span class="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Live Verbinding</span>
+    <main class="pt-24 px-6 h-screen flex flex-col">
+        <header class="mb-4 flex justify-between items-end px-4">
+            <p class="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-500 italic">
+                De <span class="text-blue-600">Zwaai</span>kamer
+            </p>
+            <div class="flex items-center gap-2 mb-0.5">
+                <div class="w-1.5 h-1.5 bg-red-600 rounded-full animate-pulse"></div>
+                <span class="text-[8px] font-bold uppercase tracking-widest text-zinc-700">Live</span>
             </div>
         </header>
         
