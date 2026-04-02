@@ -1,10 +1,11 @@
 <?php
-/** * FORCEKES - menu.php (Fase 21: Privilege Separation - Gekeurd door Manu) */
+/** * FORCEKES - menu.php (Fase 22: Navigatie Update - Gekeurd door Manu) */
 require_once 'config.php';
 $userEmail = $_SESSION['user_email'] ?? '';
 $isLoggedIn = !empty($userEmail);
 $isAdmin = ($userEmail === 'koen@lauwe.com');
 
+// Data ophalen voor Verkenner & Bezoek
 $navRaw = supabaseRequest("rpc/get_album_dashboard", 'GET');
 $navAlbums = (is_array($navRaw) && !isset($navRaw['error'])) ? $navRaw : [];
 $visibleNav = array_filter($navAlbums, fn($a) => ($a['is_visible'] ?? true) == true);
@@ -47,13 +48,16 @@ $bezoekLeden = is_array($bezoekLeden) ? $bezoekLeden : [];
             <a href="zwaaikamer.php" class="nav-link italic">Zwaaikamer</a>
             <button onclick="toggleExplorer()" class="nav-link nav-link-zinc">Verkenner</button>
             <?php if ($isAdmin): ?> <a href="admin.php" class="nav-link text-blue-500/70 hover:text-blue-500">Beheer</a> <?php endif; ?>
+            
+            <a href="handleiding.php" class="nav-link text-zinc-500 hover:text-white">Handleiding</a>
+
             <a href="<?= $isLoggedIn ? 'profiel.php' : 'login.php' ?>" class="<?= $isLoggedIn ? 'px-5 py-2 bg-white text-black rounded-full text-[10px] font-black uppercase' : 'nav-link' ?>">
                 <?= $isLoggedIn ? 'Profiel' : 'Toegang' ?>
             </a>
         </div>
 
         <button onclick="toggleMobile()" class="md:hidden z-[210] text-white p-2">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            <svg id="menu-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
         </button>
     </div>
 </nav>
@@ -61,18 +65,19 @@ $bezoekLeden = is_array($bezoekLeden) ? $bezoekLeden : [];
 <div id="mobile-overlay" class="fixed inset-0 z-[190] md:hidden flex flex-col pt-32 px-10 overflow-y-auto">
     <nav class="flex flex-col space-y-8 pb-10">
         <a href="index.php" onclick="toggleMobile()" class="text-4xl font-black uppercase tracking-tighter">Home</a>
-        <div><p class="text-[10px] font-black text-blue-600 uppercase tracking-[0.4em] mb-4">Bezoek de familie</p>
+        <div><p class="text-[10px] font-black text-blue-600 uppercase tracking-[0.4em] mb-4">Leden</p>
             <div class="grid grid-cols-2 gap-4">
                 <?php foreach ($bezoekLeden as $lid): ?>
                     <a href="bezoek.php?user=<?= rawurlencode($lid['email']) ?>" onclick="toggleMobile()" class="text-xl font-bold italic text-zinc-400"><?= htmlspecialchars($lid['nickname']) ?></a>
                 <?php endforeach; ?>
             </div>
         </div>
+        <a href="handleiding.php" onclick="toggleMobile()" class="text-4xl font-black uppercase tracking-tighter text-zinc-500">Handleiding</a>
         <a href="zwaaikamer.php" onclick="toggleMobile()" class="text-4xl font-black uppercase tracking-tighter italic text-white">Zwaaikamer</a>
         <button onclick="toggleMobile(); toggleExplorer();" class="text-left text-4xl font-black uppercase tracking-tighter text-zinc-600">Verkenner</button>
         <?php if($isAdmin): ?> <a href="admin.php" onclick="toggleMobile()" class="text-4xl font-black uppercase tracking-tighter text-blue-500/50">Beheer</a> <?php endif; ?>
         <div class="pt-8 border-t border-white/5">
-            <a href="<?= $isLoggedIn ? 'profiel.php' : 'login.php' ?>" onclick="toggleMobile()" class="text-xl font-black uppercase tracking-widest text-blue-500"><?= $isLoggedIn ? 'Mijn Profiel' : 'Login' ?></a>
+            <a href="<?= $isLoggedIn ? 'profiel.php' : 'login.php' ?>" onclick="toggleMobile()" class="text-xl font-black uppercase tracking-widest text-blue-500"><?= $isLoggedIn ? 'Mijn Profiel' : 'Inloggen' ?></a>
         </div>
     </nav>
 </div>
@@ -93,8 +98,5 @@ $bezoekLeden = is_array($bezoekLeden) ? $bezoekLeden : [];
 
 <script>
     function toggleMobile() { document.body.classList.toggle('mobile-open'); }
-    function toggleExplorer() {
-        const p = document.getElementById('explorer-panel');
-        p.classList.toggle('panel-visible'); p.classList.toggle('panel-hidden');
-    }
+    function toggleExplorer() { const p = document.getElementById('explorer-panel'); p.classList.toggle('panel-visible'); p.classList.toggle('panel-hidden'); }
 </script>
