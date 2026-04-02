@@ -1,5 +1,7 @@
-FROM php:8.2-apache
-
+FROM php:8.5-fpm-alpine
+# Manu: We gebruiken de Alpine versie voor een vlijmscherpe, lichte container.
+RUN docker-php-ext-install pdo_mysql
+# Rest van je installatie...
 # 1. Verhoog de PHP & Apache limieten naar 3600 seconden (1 uur)
 # Dit matches met de timeout van je Coolify Cron / Scheduled Task.
 RUN echo "max_execution_time = 3600" >> /usr/local/etc/php/conf.d/custom.ini \
