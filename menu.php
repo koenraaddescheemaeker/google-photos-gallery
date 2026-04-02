@@ -1,11 +1,10 @@
 <?php
-/** * FORCEKES - menu.php (Fase 20: Privileges & Hitbox Fix) */
+/** * FORCEKES - menu.php (Fase 21: Privilege Separation - Gekeurd door Manu) */
 require_once 'config.php';
 $userEmail = $_SESSION['user_email'] ?? '';
 $isLoggedIn = !empty($userEmail);
 $isAdmin = ($userEmail === 'koen@lauwe.com');
 
-// Data voor menu's
 $navRaw = supabaseRequest("rpc/get_album_dashboard", 'GET');
 $navAlbums = (is_array($navRaw) && !isset($navRaw['error'])) ? $navRaw : [];
 $visibleNav = array_filter($navAlbums, fn($a) => ($a['is_visible'] ?? true) == true);
@@ -19,14 +18,10 @@ $bezoekLeden = is_array($bezoekLeden) ? $bezoekLeden : [];
     .nav-link { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em; color: #fff; transition: all 0.3s; }
     .nav-link:hover { color: #3b82f6; }
     .nav-link-zinc { color: rgba(255,255,255,0.4); }
-    
-    /* Dropdown Hitbox Fix */
     .dropdown { position: relative; }
     .dropdown-menu { display: none; position: absolute; top: 100%; left: 0; padding-top: 20px; z-index: 500; }
     .dropdown:hover .dropdown-menu { display: block; }
-    .dropdown-content { background: #000; border: 1px solid rgba(255,255,255,0.1); border-radius: 1.5rem; padding: 1rem; min-width: 180px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
-
-    /* Mobile Overlay */
+    .dropdown-content { background: #000; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1.5rem; padding: 1rem; min-width: 180px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
     #mobile-overlay { transform: translateY(-100%); transition: transform 0.5s cubic-bezier(0.2, 1, 0.3, 1); background: #000; }
     .mobile-open #mobile-overlay { transform: translateY(0); }
     .panel-hidden { transform: translateX(100%); transition: transform 0.6s cubic-bezier(0.2, 1, 0.3, 1); background: #020202; }
@@ -43,13 +38,11 @@ $bezoekLeden = is_array($bezoekLeden) ? $bezoekLeden : [];
             <a href="index.php" class="nav-link">Home</a>
             <div class="dropdown">
                 <button class="nav-link flex items-center gap-2">Bezoek <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></button>
-                <div class="dropdown-menu">
-                    <div class="dropdown-content">
-                        <?php foreach ($bezoekLeden as $lid): ?>
-                            <a href="bezoek.php?user=<?= rawurlencode($lid['email']) ?>" class="block py-2 px-4 text-[11px] font-bold uppercase tracking-widest text-zinc-400 hover:text-blue-500"><?= htmlspecialchars($lid['nickname']) ?></a>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
+                <div class="dropdown-menu"><div class="dropdown-content">
+                    <?php foreach ($bezoekLeden as $lid): ?>
+                        <a href="bezoek.php?user=<?= rawurlencode($lid['email']) ?>" class="block py-2 px-4 text-[11px] font-bold uppercase tracking-widest text-zinc-400 hover:text-blue-500"><?= htmlspecialchars($lid['nickname']) ?></a>
+                    <?php endforeach; ?>
+                </div></div>
             </div>
             <a href="zwaaikamer.php" class="nav-link italic">Zwaaikamer</a>
             <button onclick="toggleExplorer()" class="nav-link nav-link-zinc">Verkenner</button>
@@ -68,8 +61,7 @@ $bezoekLeden = is_array($bezoekLeden) ? $bezoekLeden : [];
 <div id="mobile-overlay" class="fixed inset-0 z-[190] md:hidden flex flex-col pt-32 px-10 overflow-y-auto">
     <nav class="flex flex-col space-y-8 pb-10">
         <a href="index.php" onclick="toggleMobile()" class="text-4xl font-black uppercase tracking-tighter">Home</a>
-        <div>
-            <p class="text-[10px] font-black text-blue-600 uppercase tracking-[0.4em] mb-4">Bezoek de familie</p>
+        <div><p class="text-[10px] font-black text-blue-600 uppercase tracking-[0.4em] mb-4">Bezoek de familie</p>
             <div class="grid grid-cols-2 gap-4">
                 <?php foreach ($bezoekLeden as $lid): ?>
                     <a href="bezoek.php?user=<?= rawurlencode($lid['email']) ?>" onclick="toggleMobile()" class="text-xl font-bold italic text-zinc-400"><?= htmlspecialchars($lid['nickname']) ?></a>
@@ -80,7 +72,7 @@ $bezoekLeden = is_array($bezoekLeden) ? $bezoekLeden : [];
         <button onclick="toggleMobile(); toggleExplorer();" class="text-left text-4xl font-black uppercase tracking-tighter text-zinc-600">Verkenner</button>
         <?php if($isAdmin): ?> <a href="admin.php" onclick="toggleMobile()" class="text-4xl font-black uppercase tracking-tighter text-blue-500/50">Beheer</a> <?php endif; ?>
         <div class="pt-8 border-t border-white/5">
-            <a href="<?= $isLoggedIn ? 'profiel.php' : 'login.php' ?>" onclick="toggleMobile()" class="text-xl font-black uppercase tracking-widest text-blue-500"><?= $isLoggedIn ? 'Mijn Profiel' : 'Inloggen' ?></a>
+            <a href="<?= $isLoggedIn ? 'profiel.php' : 'login.php' ?>" onclick="toggleMobile()" class="text-xl font-black uppercase tracking-widest text-blue-500"><?= $isLoggedIn ? 'Mijn Profiel' : 'Login' ?></a>
         </div>
     </nav>
 </div>

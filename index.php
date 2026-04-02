@@ -1,5 +1,5 @@
 <?php
-/** * FORCEKES - index.php (Fase 20: Mobile 16:9 Edition) */
+/** * FORCEKES - index.php (Fase 21: Global Entry - Gekeurd door Manu) */
 require_once 'config.php';
 $data = supabaseRequest("rpc/get_album_dashboard", 'GET');
 $albums = (is_array($data) && !isset($data['error'])) ? $data : [];
@@ -32,8 +32,10 @@ if (!empty($albums)) usort($albums, fn($a, $b) => ($a['priority'] ?? 999) <=> ($
                 $img = !empty($album['thumbnail_url']) ? $album['thumbnail_url'] : ($album['cover_url'] ?? '');
             ?>
                 <a href="gallery.php?page=<?= rawurlencode($album['category_name']) ?>" class="group relative aspect-video sm:aspect-square overflow-hidden rounded-[2rem] sm:rounded-[3rem] bg-zinc-900 border border-white/5 shadow-2xl transition-all duration-700 hover:scale-[1.02]">
-                    <img src="<?= htmlspecialchars($img) ?>" class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-1000" loading="lazy">
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
+                    <?php if($img): ?>
+                        <img src="<?= htmlspecialchars($img) ?>" class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-1000" loading="lazy">
+                    <?php endif; ?>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
                     <div class="absolute inset-0 p-8 flex flex-col justify-end">
                         <p class="text-[9px] font-black uppercase text-blue-500 tracking-[0.4em] mb-2 opacity-0 group-hover:opacity-100 transition-all"><?= (int)$album['photo_count'] ?> Bestanden</p>
                         <h2 class="serif-italic text-2xl text-white"><?= ucfirst($album['category_name']) ?></h2>

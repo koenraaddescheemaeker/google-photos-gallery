@@ -1,6 +1,7 @@
 <?php
-/** * FORCEKES - bezoek.php (Fase 20: Personal 16:9 Grid) */
+/** * FORCEKES - bezoek.php (Fase 21: Ownership Fix - Gekeurd door Manu) */
 require_once 'config.php';
+
 $targetUser = $_GET['user'] ?? '';
 if (!$targetUser) { header("Location: index.php"); exit; }
 
@@ -13,11 +14,11 @@ $albums = (is_array($albumsRaw) && !isset($albumsRaw['error'])) ? $albumsRaw : [
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-    <meta charset="UTF-8"><title><?= htmlspecialchars($nickname) ?> | Forcekes</title>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title><?= htmlspecialchars($nickname) ?> | Forcekes</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;900&family=Playfair+Display:ital,wght@1,900&display=swap');
-        body { background: #000; color: #fff; font-family: 'Inter', sans-serif; }
+        body { background: #000; color: #fff; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
         .serif-italic { font-family: 'Playfair Display', serif; font-style: italic; }
     </style>
 </head>
@@ -30,17 +31,23 @@ $albums = (is_array($albumsRaw) && !isset($albumsRaw['error'])) ? $albumsRaw : [
         </header>
 
         <?php if (empty($albums)): ?>
-            <div class="py-20 border border-white/5 rounded-[3rem] text-center"><p class="serif-italic text-xl text-zinc-600 italic">Deze kamer wacht op herinneringen.</p></div>
+            <div class="py-20 border border-white/5 rounded-[3rem] text-center">
+                <p class="serif-italic text-xl text-zinc-600 italic">Deze kamer wacht op herinneringen.</p>
+            </div>
         <?php else: ?>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                 <?php foreach ($albums as $album): 
                     $catName = $album['category_name'] ?? 'Album';
+                    $thumb = !empty($album['thumbnail_url']) ? $album['thumbnail_url'] : '';
                 ?>
                     <a href="gallery.php?page=<?= rawurlencode($catName) ?>" class="group relative aspect-video sm:aspect-square overflow-hidden rounded-[2.5rem] bg-zinc-900 border border-white/5 shadow-2xl">
-                        <img src="<?= $album['thumbnail_url'] ?>" class="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-100 transition-all duration-700">
+                        <?php if($thumb): ?>
+                            <img src="<?= $thumb ?>" class="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-100 transition-all duration-700">
+                        <?php endif; ?>
                         <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
                         <div class="absolute inset-0 p-8 flex flex-col justify-end">
                             <h2 class="serif-italic text-xl text-white italic"><?= ucfirst($catName) ?></h2>
+                            <p class="text-[9px] text-zinc-500 uppercase tracking-widest mt-1"><?= (int)$album['photo_count'] ?> Bestanden</p>
                         </div>
                     </a>
                 <?php endforeach; ?>
