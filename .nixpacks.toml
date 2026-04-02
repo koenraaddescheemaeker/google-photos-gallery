@@ -1,0 +1,6 @@
+[variables]
+    PHP_VERSION = '8.5'
+    NIXPACKS_PHP_VERSION = '8.5'
+
+[phases.setup]
+    nixPkgs = ['php85', 'php85Extensions.pdo_mysql', 'php85Extensions.curl', 'php85Extensions.mbstring']
