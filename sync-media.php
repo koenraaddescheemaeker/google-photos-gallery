@@ -1,8 +1,11 @@
 <?php
 require_once 'config.php';
 set_time_limit(0);
+// Vlijmscherpe buffer-check: alleen flashen als er een buffer is
+while (ob_get_level() > 0) {
+    ob_end_flush();
+}
 ob_implicit_flush(true);
-ob_end_flush();
 echo "<!DOCTYPE html><html lang='nl'><head><meta charset='UTF-8'><title>LIVE SYNC | Forcekes</title><script src='https://cdn.tailwindcss.com'></script><style>body{background:#020202;color:#4ade80;font-family:monospace;font-size:12px;}</style></head><body><div class='p-10'>";
 function writeLog($msg,$type='info'){ $t=date('H:i:s'); $c=$type==='ok'?'#4ade80':'#3b82f6'; echo "<div><span style='color:#666;'>[$t]</span> <span style='color:$c;'>".htmlspecialchars($msg)."</span></div><script>window.scrollTo(0,document.body.scrollHeight);</script>"; flush(); }
 writeLog("REVOLUTIE: Conversie naar WebP geactiveerd.");
