@@ -1,14 +1,11 @@
 <?php
 require_once 'config.php';
 set_time_limit(0);
-// Vlijmscherpe buffer-check: alleen flashen als er een buffer is
-while (ob_get_level() > 0) {
-    ob_end_flush();
-}
+while (ob_get_level() > 0) { ob_end_flush(); }
 ob_implicit_flush(true);
 echo "<!DOCTYPE html><html lang='nl'><head><meta charset='UTF-8'><title>LIVE SYNC | Forcekes</title><script src='https://cdn.tailwindcss.com'></script><style>body{background:#020202;color:#4ade80;font-family:monospace;font-size:12px;}</style></head><body><div class='p-10'>";
-function writeLog($msg,$type='info'){ $t=date('H:i:s'); $c=$type==='ok'?'#4ade80':'#3b82f6'; echo "<div><span style='color:#666;'>[$t]</span> <span style='color:$c;'>".htmlspecialchars($msg)."</span></div><script>window.scrollTo(0,document.body.scrollHeight);</script>"; flush(); }
-writeLog("REVOLUTIE: Conversie naar WebP geactiveerd.");
+function writeLog($msg,$type='info'){ $t=date('H:i:s'); $c=$type==='ok'?'#4ade80':($type==='warn'?'#facc15':'#3b82f6'); echo "<div><span style='color:#666;'>[$t]</span> <span style='color:$c;'>".htmlspecialchars($msg)."</span></div><script>window.scrollTo(0,document.body.scrollHeight);</script>"; flush(); }
+writeLog("MULTIMEDIA REVOLUTIE: WebP & WebM Engine Actief.");
 $albs=supabaseRequest("album_settings",'GET');
 foreach($albs as $alb){
 $slug=$alb['slug']; $link=$alb['google_link'];
@@ -22,32 +19,43 @@ $urls=array_unique($matches[1]??[]);
 foreach($urls as $gUrl){ if(strlen($gUrl)>60){ supabaseRequest("album_photos","POST",["category"=>$slug,"image_url"=>$gUrl."=w2400","thumbnail_url"=>$gUrl."=w500","is_visible"=>true]); }}
 writeLog("INGEST OK: ".count($urls)." items in wachtrij.",'ok');
 }}
-$limit=100;
+$limit=50;
 for($p=0;$p<$limit;$p++){
 $items=supabaseRequest("album_photos?or=(image_url.like.*googleusercontent*,thumbnail_url.like.*googleusercontent*)&limit=1",'GET');
-if(empty($items)){ writeLog("KLAAR: Alles is vlijmscherp en geoptimaliseerd.",'ok'); break; }
+if(empty($items)){ writeLog("KLAAR: De kluis is 100% vlijmscherp.",'ok'); break; }
 $i=$items[0]; $id=$i['id']; $cat=$i['category']; $upd=[];
-writeLog("OPTIMALISATIE: Item $id naar WebP...");
+writeLog("VERWERKEN: Item $id (Categorie: $cat)...");
 $urls=['image_url'=>$i['image_url'],'thumbnail_url'=>$i['thumbnail_url']];
 foreach($urls as $f=>$u){
 if(strpos($u,'google')!==false){
 $rawData=@file_get_contents($u);
-if($rawData){
-$isVid=(strpos($u,'.mp4')!==false || strpos($u,'.mov')!==false);
-if(!$isVid){
-$img=imagecreatefromstring($rawData);
-ob_start();
-imagewebp($img,null,80);
-$data=ob_get_clean();
-imagedestroy($img);
-$ext='.webp'; $mime='image/webp';
-}else{
+if(!$rawData) continue;
+$isVid=(strpos($u,'video')!==false || strpos($u,'.mp4')!==false || strpos($u,'.mov')!==false);
+if($isVid){
+writeLog(" -> VIDEO GEDETECTEERD: Start WebM transcodering (FFmpeg)...",'warn');
+$tmpIn="/tmp/in_$id.mp4"; $tmpOut="/tmp/out_$id.webm";
+file_put_contents($tmpIn, $rawData);
+$cmd="ffmpeg -i $tmpIn -c:v libvpx-vp9 -crf 35 -b:v 0 -deadline realtime -c:a libopus $tmpOut 2>&1";
+exec($cmd, $output, $returnVar);
+if($returnVar === 0 && file_exists($tmpOut)){
+$data=file_get_contents($tmpOut); $ext='.webm'; $mime='video/webm';
+writeLog(" -> TRANSCODERING OK: Video vlijmscherp omgezet naar WebM.",'ok');
+} else {
 $data=$rawData; $ext='.mp4'; $mime='video/mp4';
+writeLog(" -> WAARSCHUWING: FFmpeg faalde. Gebruik originele MP4.",'warn');
+}
+@unlink($tmpIn); @unlink($tmpOut);
+} else {
+$img=imagecreatefromstring($rawData);
+if($img){
+ob_start(); imagewebp($img,null,80); $data=ob_get_clean(); imagedestroy($img);
+$ext='.webp'; $mime='image/webp';
+} else { $data=$rawData; $ext='.jpg'; $mime='image/jpeg'; }
 }
 $path=($f==='thumbnail_url'?"thumbs/":"")."$cat/$id$ext";
 $nUrl=uploadToSupabase($path,$data,$mime);
 if($nUrl) $upd[$f]=$nUrl;
-}}}
+}}
 if(!empty($upd)) supabaseRequest("album_photos?id=eq.$id","PATCH",$upd);
 }
 function uploadToSupabase($p,$d,$m){
