@@ -1,5 +1,4 @@
-// nieuwe menu
-<nav class="fixed top-0 left-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-white/10">
+<nav class="fixed top-0 left-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-white/10 text-white">
     <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         
         <div class="flex items-center space-x-4">
@@ -13,16 +12,11 @@
             <a href="zwaaikamer.php" class="nav-link">ZWAAIKAMER</a>
             <a href="gallery.php?cat=het%20museum" class="nav-link text-amber-200/80">MUSEUM</a>
             <a href="handleiding.php" class="nav-link">HANDLEIDING</a>
-            
-            <button onclick="toggleMenu()" class="p-2 text-white hover:bg-white/10 rounded-full transition-all">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h16m-7 6h7" />
-                </svg>
-            </button>
+            <a href="gallery.php?view=albums" class="nav-link">ALBUMS</a>
         </div>
 
         <div class="md:hidden">
-            <button onclick="toggleMenu()" class="text-white">
+            <button class="text-white">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
                 </svg>
@@ -36,10 +30,3 @@
         @apply text-white/70 text-xs font-semibold tracking-widest uppercase hover:text-white transition-colors duration-300;
     }
 </style>
-
-<script>
-    function toggleMenu() {
-        console.log("Menu getriggerd - Hier komt straks de sidebar-logica.");
-        // We bouwen de sidebar in een volgend pakket
-    }
-</script>
