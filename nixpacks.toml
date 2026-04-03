@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ['ffmpeg', 'php83', 'curl', 'libwebp', 'nodejs', 'npm']
+nixPkgs = ['ffmpeg', 'php83', 'curl', 'libwebp', 'nodejs']
 
 [phases.build]
-cmds = ['echo "De multimedia-motor inclusief Node-runtime staat klaar..."']
+cmds = ['echo "De multimedia-motor met Node-runtime wordt vlijmscherp opgetuigd..."']
