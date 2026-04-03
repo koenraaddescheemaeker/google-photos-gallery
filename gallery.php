@@ -23,7 +23,7 @@ $jsItems = array_map(fn($m) => ['url' => $m['image_url'], 'isVid' => str_ends_wi
     </style>
 </head>
 <body>
-    <?php include 'menu.php'; ?>
+    <?php include 'navbar.php'; ?>
     <main class="max-w-[1600px] mx-auto px-10 pt-48 pb-32">
         <h1 class="serif-italic text-6xl md:text-9xl mb-24 italic"><?= ucfirst($page) ?></h1>
         <div class="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-8 space-y-8">

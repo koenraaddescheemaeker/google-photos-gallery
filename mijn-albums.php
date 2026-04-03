@@ -36,7 +36,7 @@ $myAlbums = supabaseRequest("album_settings?created_by=eq.$userEmail", 'GET');
     </style>
 </head>
 <body class="bg-black">
-    <?php include 'menu.php'; ?>
+    <?php include 'navbar.php'; ?>
     <main class="max-w-4xl mx-auto px-10 pt-48 pb-32">
         <header class="mb-16">
             <h1 style="font-family:'Playfair Display', serif;" class="text-4xl italic mb-2">Mijn Albums</h1>

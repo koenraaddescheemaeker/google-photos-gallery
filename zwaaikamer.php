@@ -14,7 +14,7 @@ $jitsiUrl = "https://jitsi.riot.im/zwaaikamer#config.toolbarButtons=[%22micropho
     </style>
 </head>
 <body class="bg-black">
-    <?php include 'menu.php'; ?>
+    <?php include 'navbar.php'; ?>
     <main class="pt-24 px-6 h-screen flex flex-col">
         <header class="mb-4 flex justify-between items-end px-4">
             <p class="text-[10px] font-black uppercase tracking-[0.5em] text-zinc-500 italic">

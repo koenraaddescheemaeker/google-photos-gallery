@@ -24,7 +24,7 @@ $myAlbums = supabaseRequest("album_settings?created_by=eq.$userEmail", 'GET');
 <style>@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,900&display=swap'); body { background: #000; color: #fff; font-family: 'Inter', sans-serif; } .card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 2rem; padding: 2.5rem; } input, select { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 0.8rem; border-radius: 1rem; width: 100%; outline: none; }</style>
 </head>
 <body class="bg-black">
-<?php include 'menu.php'; ?>
+<?php include 'navbar.php'; ?>
 <main class="max-w-6xl mx-auto px-10 pt-48 pb-32">
 <header class="mb-12"><h1 style="font-family:'Playfair Display', serif;" class="text-5xl italic">Mijn Cockpit</h1><?php if($msg): ?><p class="text-blue-500 text-[10px] font-black uppercase mt-4"><?= $msg ?></p><?php endif; ?></header>
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">

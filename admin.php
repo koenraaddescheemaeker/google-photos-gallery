@@ -13,7 +13,7 @@ $members = supabaseRequest("members?order=role.asc", 'GET');
 <style>@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,900&display=swap'); body { background: #000; color: #fff; font-family: 'Inter', sans-serif; } .card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 2rem; padding: 2rem; }</style>
 </head>
 <body class="bg-black">
-<?php include 'menu.php'; ?>
+<?php include 'navbar.php'; ?>
 <main class="max-w-7xl mx-auto px-10 pt-48 pb-32">
 <h1 style="font-family:'Playfair Display', serif;" class="text-5xl italic mb-12">Beheer</h1>
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">

@@ -7,7 +7,7 @@ if(is_array($feesten)){usort($feesten,fn($a,$b)=>($a['priority']??999)<=>($b['pr
 <html lang="nl">
 <head><meta charset="UTF-8"><title>HOME | Forcekes</title><script src="https://cdn.tailwindcss.com"></script><style>@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,900&display=swap'); body{background:#000;color:#fff;font-family:'Inter',sans-serif;} .serif-italic{font-family:'Playfair Display',serif;font-style:italic;}</style></head>
 <body class="bg-black">
-<?php include 'menu.php'; ?>
+<?php include 'navbar.php'; ?>
 <main class="max-w-7xl mx-auto px-10 pt-48 pb-32">
 <header class="mb-20 text-center"><h1 class="serif-italic text-5xl md:text-7xl mb-4">FEESTEN</h1></header>
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">

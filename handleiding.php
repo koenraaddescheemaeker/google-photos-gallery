@@ -19,7 +19,7 @@ require_once 'config.php';
     </style>
 </head>
 <body class="bg-black">
-    <?php include 'menu.php'; ?>
+    <?php include 'navbar.php'; ?>
     
     <main class="max-w-6xl mx-auto px-6 pt-48 pb-32">
         <header class="mb-32 text-center">
