@@ -1,5 +1,8 @@
 [phases.setup]
-nixPkgs = ['ffmpeg', 'php83', 'curl', 'libwebp', 'nodejs']
+nixPkgs = ['ffmpeg', 'php83', 'curl', 'libwebp', 'nodejs', 'nginx']
 
 [phases.build]
-cmds = ['echo "De multimedia-motor met Node-runtime wordt vlijmscherp opgetuigd..."']
+cmds = ['echo "Multimedia Engine met Nginx-architectuur wordt vlijmscherp opgetuigd..."']
+
+# Nixpacks detecteert normaal de start-opdracht zelf, 
+# maar hiermee dwingen we de zuiverheid af.
