@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ['ffmpeg', 'php83', 'curl', 'libwebp']
+nixPkgs = ['ffmpeg', 'php83', 'curl', 'libwebp', 'nodejs', 'npm']
 
 [phases.build]
-cmds = ['echo "Bouwen van de Forcekes Multimedia Engine..."']
+cmds = ['echo "De multimedia-motor inclusief Node-runtime staat klaar..."']
