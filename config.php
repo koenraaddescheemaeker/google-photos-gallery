@@ -1,17 +1,46 @@
 <?php
-session_start();
-define('SUPABASE_URL', 'https://supa.forcekes.be');
-define('SUPABASE_SERVICE_KEY', 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc3MzQ4MzM2MCwiZXhwIjo0OTI5MTU2OTYwLCJyb2xlIjoic2VydmljZV9yb2xlIn0.U_MZEZsEI0c2VNqDu578m-ItLlmHLQIPN1ndKHWT3pA');
-function supabaseRequest($endpoint, $method = 'GET', $data = null) {
-$url = SUPABASE_URL . "/rest/v1/" . $endpoint;
-$ch = curl_init($url);
-$headers = ['Authorization: Bearer ' . SUPABASE_SERVICE_KEY, 'apikey: ' . SUPABASE_SERVICE_KEY, 'Content-Type: application/json', 'Prefer: return=representation'];
-curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-if ($data) { curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data)); }
-$response = curl_exec($ch);
-curl_close($ch);
-return json_decode($response, true);
+/**
+ * FORCEKES 2026 - ARCHITECTUUR CONFIGURATIE
+ * De fundering is heilig.
+ */
+
+// 1. Database Coördinaten
+// In Coolify vul je deze in bij 'Environment Variables'.
+$host     = getenv('DB_HOST')     ?: 'db.xxxxxx.supabase.co'; // Je Supabase host
+$port     = getenv('DB_PORT')     ?: '5432';
+$dbname   = getenv('DB_NAME')     ?: 'postgres';
+$user     = getenv('DB_USER')     ?: 'postgres';
+$password = getenv('DB_PASSWORD') ?: 'JE_WACHTWOORD_HIER';
+
+try {
+    // 2. De DSN (Data Source Name) voor PostgreSQL
+    $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
+
+    // 3. De Vlijmscherpe PDO Verbinding
+    // We noemen de variabele expliciet $db zoals afgesproken.
+    $db = new PDO($dsn, $user, $password, [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION, // Gooi errors bij fouten
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,       // Haal data op als associatieve arrays
+        PDO::ATTR_EMULATE_PREPARES   => false,                  // Gebruik echte prepared statements voor veiligheid
+    ]);
+
+    // De verbinding is geslaagd. De architectuur ademt.
+} catch (PDOException $e) {
+    // Als de kluis op slot blijft, loggen we het vlijmscherp
+    error_log("Databaseverbinding mislukt: " . $e->getMessage());
+    
+    // In productie tonen we een humane foutmelding, geen technische details
+    die("De kluis is momenteel niet bereikbaar. Onze excuses voor het ongemak.");
 }
-?>
+
+// 4. Globale App Instellingen
+$config = [
+    'app_name'     => 'FORCEKES 2026',
+    'base_url'     => 'https://forcekes.be',
+    'museum_limit' => 100, // De 'Harde Grens' voor de ID's
+];
+
+// De uil waakt over de sessies
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
