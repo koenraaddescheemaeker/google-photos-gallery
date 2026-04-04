@@ -1,5 +1,6 @@
 <?php
-require_once 'config.php';
+require_once 'config.php'; // Altijd eerst de fundering
+include 'navbar.php';     // Dan de rest
 $feesten = supabaseRequest("rpc/get_album_dashboard", 'GET');
 if(is_array($feesten)){usort($feesten,fn($a,$b)=>($a['priority']??999)<=>($b['priority']??999));}
 ?>
