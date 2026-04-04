@@ -1,6 +1,6 @@
 <?php
 // config.php - De onverwoestbare bron
-$host     = 'https://supa.forcekes.be'; // Gebaseerd op je logs
+$host     = 'supa.forcekes.be'; // Gebaseerd op je logs
 $port     = '5432';
 $dbname   = 'postgres';
 $user     = 'postgres';
