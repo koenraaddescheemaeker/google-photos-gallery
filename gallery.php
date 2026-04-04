@@ -1,48 +1,51 @@
 <?php
+// gallery.php - De vlijmscherpe presentatie
 require_once 'config.php';
 include 'navbar.php';
 
 $view = $_GET['view'] ?? 'albums';
-$cat_id = $_GET['cat_id'] ?? null;
 
-// De Vlijmscherpe ID-Grens Logica
-if ($view === 'museum' || ($cat_id && $cat_id == 1)) {
-    $condition = "id < 100";
-    $pageTitle = "HET MUSEUM";
+// De Harde ID-Logica
+if ($view === 'museum') {
+    $condition = "id < " . MUSEUM_THRESHOLD;
+    $title = "HET MUSEUM";
     $isMuseum = true;
 } else {
-    $condition = "id >= 100";
-    $pageTitle = "ALBUMS";
+    $condition = "id >= " . MUSEUM_THRESHOLD;
+    $title = "FAMILIE ALBUMS";
     $isMuseum = false;
 }
 
-// Eventueel filteren op specifieke categorie-ID als die meegegeven is
-if ($cat_id) {
-    $condition .= " AND category_id = " . intval($cat_id);
-}
-
-$albums = $db->query("SELECT * FROM album_settings WHERE $condition AND is_visible = true ORDER BY priority ASC, created_at DESC");
+// Query op de juiste tabel: album_settings
+$query = "SELECT * FROM album_settings WHERE $condition AND is_visible = TRUE ORDER BY priority ASC";
+$stmt = $db->query($query);
+$albums = $stmt->fetchAll();
 ?>
-
-<body class="bg-black text-white pt-32 antialiased">
-    <?php if ($isMuseum): include 'bg-video.php'; endif; ?>
+<!DOCTYPE html>
+<html lang="nl" class="bg-black text-white">
+<head>
+    <title><?= $title ?> | FORCEKES</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="pt-32 antialiased">
+    <?php if ($isMuseum) include 'bg-video.php'; ?>
 
     <main class="max-w-7xl mx-auto px-6">
-        <header class="mb-12">
-            <h1 class="text-6xl font-bold tracking-tighter italic uppercase"><?= $pageTitle ?></h1>
-            <div class="h-1 w-24 bg-white mt-4"></div>
+        <header class="mb-12 border-l-4 border-white pl-6">
+            <h1 class="text-6xl font-bold tracking-tighter italic uppercase"><?= $title ?></h1>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             <?php foreach ($albums as $album): ?>
-                <div class="group relative aspect-video overflow-hidden rounded-sm border border-white/10 hover:border-white/40 transition-all">
-                    <img src="<?= $album['cover_url'] ?>" class="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-110 transition-transform duration-1000">
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent p-6 flex flex-col justify-end">
-                        <span class="text-[10px] font-mono text-white/30 uppercase">ID: <?= str_pad($album['id'], 3, '0', STR_PAD_LEFT) ?></span>
-                        <h2 class="text-xl font-bold uppercase tracking-tight"><?= $album['title'] ?></h2>
+                <div class="group relative aspect-video bg-zinc-900 overflow-hidden border border-white/5">
+                    <img src="<?= $album['google_link'] ?>" class="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-100 transition-all duration-700">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black p-6 flex flex-col justify-end">
+                        <span class="text-[10px] font-mono text-white/30">ID: <?= $album['id'] ?></span>
+                        <h2 class="text-xl font-bold uppercase"><?= htmlspecialchars($album['slug']) ?></h2>
                     </div>
                 </div>
             <?php endforeach; ?>
         </div>
     </main>
 </body>
+</html>
