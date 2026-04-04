@@ -1,21 +1,23 @@
 <?php
-// config.php - De onverwoestbare bron
-$host     = 'supa.forcekes.be'; // Gebaseerd op je logs
-$port     = '5432';
-$dbname   = 'postgres';
-$user     = 'postgres';
-$password = 'x0NoycAEhtoaUuzIBUeZEML88NpnwzQ4'; // VLIJMSCHERP INVULLEN!
+// config.php - De Onverwoestbare Verbinding
+$raw_host = getenv('DB_HOST')     ?: 'supa.forcekes.be';
+$port     = getenv('DB_PORT')     ?: '5432';
+$dbname   = getenv('DB_NAME')     ?: 'postgres';
+$user     = getenv('DB_USER')     ?: 'postgres';
+$password = getenv('DB_PASSWORD') ?: 'x0NoycAEhtoaUuziBUEzEML88NpnwzQ4';
+
+// Vlijmscherpe opschoning van de hostnaam
+$host = str_replace(['https://', 'http://', '/'], '', $raw_host);
 
 try {
     $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=require";
     $db = new PDO($dsn, $user, $password, [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_TIMEOUT            => 5
     ]);
 } catch (PDOException $e) {
-    // De uil waarschuwt: toon de echte fout even voor de debug-fase
-    die("Kluis-fout: " . $e->getMessage()); 
+    die("Kluis-fout: " . $e->getMessage());
 }
 
-// De Harde Grens ID
 define('MUSEUM_THRESHOLD', 100);
