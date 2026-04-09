@@ -1,23 +1,18 @@
 <?php
-// config.php - De Nieuwe Fundering op new.forcekes.be
-$host     = getenv('DB_HOST')     ?: 'supa.forcekes.be';
-$port     = getenv('DB_PORT')     ?: '5432';
-$dbname   = getenv('DB_NAME')     ?: 'postgres';
-$user     = getenv('DB_USER')     ?: 'postgres';
-$password = getenv('DB_PASSWORD') ?: 'x0NoycAEhtoaUuziBUEzEML88NpnwzQ4';
-
-// De arend zorgt voor een zuivere host
-$host = str_replace(['https://', 'http://', '/'], '', $host);
+// config.php - De Nieuwe Fundering
+$db_host = 'supa.forcekes.be';
+$db_name = 'postgres';
+$db_user = 'postgres';
+$db_pass = 'x0NoycAEhtoaUuziBUEzEML88NpnwzQ4';
 
 try {
-    $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=require";
-    $db = new PDO($dsn, $user, $password, [
+    // We gebruiken poort 5432 en dwingen een timeout af van 10 seconden
+    $dsn = "pgsql:host=$db_host;port=5432;dbname=$db_name;sslmode=require";
+    $db = new PDO($dsn, $db_user, $db_pass, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+        PDO::ATTR_TIMEOUT => 10
     ]);
+    // De uil knikt: verbinding geslaagd.
 } catch (PDOException $e) {
-    die("Verbindingsfout: " . $e->getMessage());
+    die("Architect, de kluis blijft dicht: " . $e->getMessage());
 }
-
-// De app-locatie
-$base_url = "https://new.forcekes.be";
