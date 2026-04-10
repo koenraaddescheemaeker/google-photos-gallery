@@ -1,5 +1,5 @@
 services:
-  forcekes-app:
+  app:
     build: .
     container_name: forcekes-app
     restart: always
@@ -8,12 +8,6 @@ services:
       DB_PORT: 5432
       DB_NAME: postgres
       DB_USER: postgres
-      DB_PASSWORD: x0NoycAEhtoaUuzIBUeZEML88NpnwzQ4
-    networks:
-      - coolify
+      DB_PASSWORD: YOUR_PASSWORD
     labels:
       - "coolify.managed=true"
-
-/** networks:
-  coolify:
-    external: true
