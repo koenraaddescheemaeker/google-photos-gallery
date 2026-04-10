@@ -1,5 +1,5 @@
 services:
-  app:
+  forcekes-app:
     build: .
     container_name: forcekes-app
     restart: always
