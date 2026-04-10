@@ -1,30 +1,25 @@
-<?php
-require_once 'config.php';
-
-// We halen gewoon alle zichtbare albums op, zonder de ID-grens complicaties voor nu
-$query = "SELECT * FROM album_settings WHERE is_visible = TRUE ORDER BY priority ASC";
-$albums = $db->query($query)->fetchAll();
-?>
 <!DOCTYPE html>
 <html lang="nl" class="bg-black text-white">
 <head>
     <meta charset="UTF-8">
-    <title>FORCEKES | NIEUWE START</title>
+    <title>FORCEKES 2026</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="p-8">
-    <header class="mb-12">
-        <h1 class="text-4xl font-bold tracking-tighter uppercase italic">FORCEKES <span class="text-white/30">NEW</span></h1>
-        <p class="text-white/50 text-sm">Familieportaal - Google Photos Archief</p>
-    </header>
-
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <?php foreach ($albums as $album): ?>
-            <div class="border border-white/10 p-4 rounded-lg bg-zinc-900">
-                <img src="<?= $album['google_link'] ?>" class="w-full aspect-video object-cover rounded mb-4">
-                <h2 class="font-bold uppercase text-lg"><?= htmlspecialchars($album['slug']) ?></h2>
-            </div>
-        <?php endforeach; ?>
+<body class="flex items-center justify-center h-screen overflow-hidden">
+    <?php include 'navbar.php'; ?>
+    <div class="text-center">
+        <h1 class="text-[12vw] font-black italic tracking-tighter leading-none opacity-10 select-none absolute inset-0 flex items-center justify-center">FORCEKES</h1>
+        <div class="relative z-10">
+            <h2 class="text-4xl font-bold uppercase tracking-[0.3em] mb-4">De Kluis</h2>
+            <?php 
+            try {
+                $count = $db->query("SELECT count(*) FROM album_settings")->fetchColumn();
+                echo "<p class='text-amber-400 font-mono tracking-widest uppercase text-sm'>Verbinding vlijmscherp: $count albums ontsloten</p>";
+            } catch(Exception $e) {
+                echo "<p class='text-red-500 font-mono text-xs'>Lasknaat-fout: " . $e->getMessage() . "</p>";
+            }
+            ?>
+        </div>
     </div>
 </body>
 </html>

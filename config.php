@@ -1,18 +1,20 @@
 <?php
-// config.php - De Nieuwe Fundering
-$db_host = 'supa.forcekes.be';
-$db_name = 'postgres';
-$db_user = 'postgres';
-$db_pass = 'x0NoycAEhtoaUuziBUEzEML88NpnwzQ4';
+// config.php - De Gezuiverde Fundering
+$host     = getenv('DB_HOST')     ?: 'supabase-db';
+$port     = getenv('DB_PORT')     ?: '5432';
+$dbname   = getenv('DB_NAME')     ?: 'postgres';
+$user     = getenv('DB_USER')     ?: 'postgres';
+$password = getenv('DB_PASSWORD') ?: 'x0NoycAEhtoaUuzIBUeZEML88NpnwzQ4';
 
 try {
-    // We gebruiken poort 5432 en dwingen een timeout af van 10 seconden
-    $dsn = "pgsql:host=$db_host;port=5432;dbname=$db_name;sslmode=require";
-    $db = new PDO($dsn, $db_user, $db_pass, [
+    $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=disable";
+    $db = new PDO($dsn, $user, $password, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_TIMEOUT => 10
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_TIMEOUT => 5
     ]);
-    // De uil knikt: verbinding geslaagd.
 } catch (PDOException $e) {
-    die("Architect, de kluis blijft dicht: " . $e->getMessage());
+    die("Lasknaat-fout (DB): " . $e->getMessage());
 }
+
+define('MUSEUM_THRESHOLD', 100);
