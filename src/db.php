@@ -4,11 +4,18 @@ function db() {
     static $pdo;
 
     if (!$pdo) {
-        $dsn = "pgsql:host=" . $_ENV['DB_HOST'] . ";port=" . $_ENV['DB_PORT'] . ";dbname=" . $_ENV['DB_NAME'];
+        $dsn = "pgsql:host=" . getenv('DB_HOST') . 
+               ";port=" . getenv('DB_PORT') . 
+               ";dbname=" . getenv('DB_NAME');
 
-        $pdo = new PDO($dsn, $_ENV['DB_USER'], $_ENV['DB_PASSWORD'], [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        ]);
+        $pdo = new PDO(
+            $dsn,
+            getenv('DB_USER'),
+            getenv('DB_PASSWORD'),
+            [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            ]
+        );
     }
 
     return $pdo;
