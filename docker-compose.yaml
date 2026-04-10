@@ -8,6 +8,6 @@ services:
       DB_PORT: 5432
       DB_NAME: postgres
       DB_USER: postgres
-      DB_PASSWORD: YOUR_PASSWORD
+      DB_PASSWORD: x0NoycAEhtoaUuzIBUeZEML88NpnwzQ4
     labels:
       - "coolify.managed=true"
