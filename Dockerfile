@@ -5,3 +5,4 @@ ENV WEB_DOCUMENT_ROOT=/app/public
 COPY . /app
 
 RUN chown -R application:application /app
+RUN chmod -R 755 /app

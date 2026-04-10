@@ -3,11 +3,11 @@ services:
     build: .
     container_name: forcekes-app
     restart: always
+    ports:
+      - "80"
     environment:
-      DB_HOST: supabase-force
+      DB_HOST: supabase-db
       DB_PORT: 5432
       DB_NAME: postgres
       DB_USER: postgres
       DB_PASSWORD: x0NoycAEhtoaUuzIBUeZEML88NpnwzQ4
-    labels:
-      - "coolify.managed=true"
