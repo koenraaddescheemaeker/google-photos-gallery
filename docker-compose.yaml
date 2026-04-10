@@ -6,7 +6,7 @@ services:
     container_name: forcekes-app
     restart: always
     environment:
-      - DB_HOST=supabase-db
+      - DB_HOST=https://supa.forcekes0be
       - DB_PORT=5432
       - DB_NAME=postgres
       - DB_USER=postgres
