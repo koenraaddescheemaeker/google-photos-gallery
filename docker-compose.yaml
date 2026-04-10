@@ -1,43 +1,19 @@
-version: '3.8'
-
 services:
-  forcekes-app:
+  app:
     build: .
     container_name: forcekes-app
     restart: always
     environment:
-      - DB_HOST=https:supa.forcekes.be
-      - DB_PORT=5432
-      - DB_NAME=postgres
-      - DB_USER=postgres
-      - DB_PASSWORD=x0NoycAEhtoaUuzIBUeZEML88NpnwzQ4
-      - APP_URL=https://new.forcekes.be
-    networks:
-      - coolify
-    labels:
-      - "coolify.managed=true"
-
-networks:
-  coolify:
-    external: trueversion: '3.8'
-
-services:
-  forcekes-app:
-    build: .
-    container_name: forcekes-app
-    restart: always
-    environment:
-      DB_HOST: supa.forcekes.be
+      DB_HOST: supabase-db
       DB_PORT: 5432
       DB_NAME: postgres
       DB_USER: postgres
       DB_PASSWORD: x0NoycAEhtoaUuzIBUeZEML88NpnwzQ4
-      APP_URL: https://new.forcekes.be
     networks:
       - coolify
     labels:
       - "coolify.managed=true"
 
-networks:
+/** networks:
   coolify:
     external: true
