@@ -6,7 +6,4 @@ function supabase($table) {
         "Content-Type: application/json"
     ];
     return [$url, $headers];
-    
 }
-var_dump($response);
-exit;
