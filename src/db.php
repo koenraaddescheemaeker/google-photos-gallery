@@ -1,22 +1,11 @@
-<?php
+function supabase($table) {
+    $url = "https://supa.forcekes.be/rest/v1/" . $table;
 
-function db() {
-    static $pdo;
+    $headers = [
+        "apikey: " . getenv('SUPABASE_ANON_KEY'),
+        "Authorization: Bearer " . getenv('eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc3MzQ4MzM2MCwiZXhwIjo0OTI5MTU2OTYwLCJyb2xlIjoiYW5vbiJ9.LXIJo7fsXhJIQsSi2jIfoqrwV8axI57_6B733vKwCXs'),
+        "Content-Type: application/json"
+    ];
 
-    if (!$pdo) {
-        $dsn = "pgsql:host=" . getenv('DB_HOST') . 
-               ";port=" . getenv('DB_PORT') . 
-               ";dbname=" . getenv('DB_NAME');
-
-        $pdo = new PDO(
-            $dsn,
-            getenv('DB_USER'),
-            getenv('DB_PASSWORD'),
-            [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            ]
-        );
-    }
-
-    return $pdo;
+    return [$url, $headers];
 }
