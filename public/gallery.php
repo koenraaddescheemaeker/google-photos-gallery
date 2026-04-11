@@ -1,4 +1,6 @@
 <?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 // versie 0957//
 require_once __DIR__ . '/db.php';
 
