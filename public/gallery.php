@@ -1,45 +1,20 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-require_once __DIR__ . '/../src/gallery.php';
+// versie 0957//
+require_once __DIR__ . '/db.php';
 
-$id = $_GET['id'] ?? 1;
-$type = ($id == 1) ? 'museum' : 'albums';
+function getPhotos($type = 'museum') {
 
-$photos = getPhotos($type);
+    if ($type === 'museum') {
+        $filters = [
+            "category" => "eq.het museum",
+            "order" => "id.desc"
+        ];
+    } else {
+        $filters = [
+            "category" => "neq.het museum",
+            "order" => "id.desc"
+        ];
+    }
 
-?>
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Forcekes Gallery</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-black text-white">
-
-<div class="p-6 flex justify-between items-center">
-    <h1 class="text-2xl">
-        <?= $type === 'museum' ? 'Museum' : 'Albums' ?>
-    </h1>
-
-    <div class="space-x-4">
-        <a href="/gallery.php?id=1" class="underline">Museum</a>
-        <a href="/gallery.php?id=2" class="underline">Albums</a>
-    </div>
-</div>
-
-<div class="p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-    <?php foreach ($photos as $photo): ?>
-        <a href="<?= $photo['image_url'] ?>" target="_blank">
-            <img 
-                src="<?= $photo['thumbnail_url'] ?>" 
-                class="w-full h-48 object-cover rounded-lg hover:scale-105 transition"
-                loading="lazy"
-            />
-        </a>
-    <?php endforeach; ?>
-</div>
-
-</body>
-</html>
+    return supabaseRequest("album_photos", $filters);
+}
